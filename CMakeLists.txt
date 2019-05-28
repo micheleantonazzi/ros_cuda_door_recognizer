@@ -12,6 +12,9 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
 )
 
+find_package(CUDA REQUIRED)
+CUDA_ADD_LIBRARY(cuda_kernels ${LIB_TYPE} src/cuda/cuda_door_recognizer.cu)
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -134,6 +137,8 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME} src/door_recognizer.cpp)
 
+add_dependencies(${PROJECT_NAME} cuda_kernels)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -147,6 +152,7 @@ add_executable(${PROJECT_NAME} src/door_recognizer.cpp)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}
    ${catkin_LIBRARIES}
+   cuda_kernels
 )
 
 #############
