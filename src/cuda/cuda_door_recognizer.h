@@ -5,6 +5,10 @@
 #ifndef ROS_CUDA_DOOR_RECOGNIZER_CUDA_DOOR_RECOGNIZER_H
 #define ROS_CUDA_DOOR_RECOGNIZER_CUDA_DOOR_RECOGNIZER_H
 
-void test_cuda();
+class classe{
+public:
+    void test_cuda();
+};
+
 
 #endif //ROS_CUDA_DOOR_RECOGNIZER_CUDA_DOOR_RECOGNIZER_H

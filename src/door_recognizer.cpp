@@ -10,5 +10,6 @@ int main(int argc, char **argv){
 
     ros::init(argc, argv, "services");
     ROS_INFO_STREAM("Hello ROS");
-    test_cuda();
+    classe c = classe();
+    c.test_cuda();
 }
