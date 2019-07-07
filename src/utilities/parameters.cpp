@@ -10,6 +10,11 @@ using namespace ros;
 string Parameters::DOOR_HIGH_RES = "/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/test/door_high_res.jpg";
 string Parameters::DOOR_MED_RES = "/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/test/door_med_res.jpg";
 
+Parameters& Parameters::getInstance() {
+    static Parameters parameters;
+    return parameters;
+}
+
 Parameters::Parameters() : camera(false), topic(), image_path(){}
 
 void Parameters::getValues() {
@@ -25,5 +30,5 @@ bool Parameters::usingCamera() {
 
 Mat Parameters::getImageFromOpenCV() {
     return this->camera ? Mat() :
-           imread(this->image_path);
+           imread(this->image_path).;
 }

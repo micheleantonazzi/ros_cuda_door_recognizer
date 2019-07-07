@@ -11,7 +11,7 @@ using namespace cv;
 #ifndef ROS_CUDA_DOOR_RECOGNIZER_PARAMETERS_H
 #define ROS_CUDA_DOOR_RECOGNIZER_PARAMETERS_H
 
-
+// SINGLETON
 class Parameters {
 private:
 
@@ -27,8 +27,11 @@ private:
     // If you don't use the camera specify the image's path
     string image_path;
 
-public:
     Parameters();
+
+public:
+
+    static Parameters& getInstance();
 
     // Acquires parameter's values
     void getValues();
