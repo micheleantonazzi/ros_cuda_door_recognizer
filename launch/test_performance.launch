@@ -7,7 +7,7 @@
     <!-- topic: if you are using the camera, specify the topic where take it -->
     <arg name="topic" default="/usb_cam/image_raw" />
 
-    <!-- camera: if you want to acquire an image from disk usign OpenCV, set the absolute path of that image -->
+    <!-- camera: if you want to acquire an image from disk using OpenCV, set the absolute path of that image -->
     <arg name="image_path" default="" />
 
     <node pkg="ros_cuda_door_recognizer" type="test_performance" name="test_performance" output="screen">
