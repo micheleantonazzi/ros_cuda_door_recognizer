@@ -7,13 +7,20 @@ project(ros_cuda_door_recognizer LANGUAGES CXX CUDA)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
 )
 
+find_package(OpenCV REQUIRED)
+
 find_package(CUDA REQUIRED)
+<<<<<<< HEAD
 CUDA_ADD_LIBRARY(kernels_cuda ${LIB_TYPE} src/cuda/cuda_door_recognizer.cu)
+=======
+CUDA_ADD_LIBRARY(cuda_interface ${LIB_TYPE} src/cuda/cuda_interface.cu)
+>>>>>>> develop
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -135,9 +142,16 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
+add_executable(door_recognizer_gpu src/door_recognizer_gpu.cpp)
+
 add_executable(door_recognizer src/door_recognizer.cpp)
 
-add_dependencies(door_recognizer kernels_cuda)
+add_executable(test_performance src/test_performance.cpp src/utilities/parameters.h src/utilities/parameters.cpp
+        src/utilities/image.h src/utilities/image.cpp)
+
+add_dependencies(door_recognizer_gpu cuda_interface)
+
+add_dependencies(test_performance cuda_interface)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -150,9 +164,24 @@ add_dependencies(door_recognizer kernels_cuda)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
+target_link_libraries(door_recognizer_gpu
+        ${catkin_LIBRARIES}
+        cuda_interface
+)
+
 target_link_libraries(door_recognizer
+<<<<<<< HEAD
    ${catkin_LIBRARIES}
    kernels_cuda
+=======
+        ${catkin_LIBRARIES}
+)
+
+target_link_libraries(test_performance
+        ${catkin_LIBRARIES}
+        ${OpenCV_LIBS}
+        cuda_interface
+>>>>>>> develop
 )
 
 #############
