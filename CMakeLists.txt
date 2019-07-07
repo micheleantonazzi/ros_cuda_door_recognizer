@@ -12,6 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
 )
 
+find_package(OpenCV REQUIRED)
+
 find_package(CUDA REQUIRED)
 CUDA_ADD_LIBRARY(cuda_interface ${LIB_TYPE} src/cuda/cuda_interface.cu)
 
@@ -167,6 +169,7 @@ target_link_libraries(door_recognizer
 
 target_link_libraries(test_performance
         ${catkin_LIBRARIES}
+        ${OpenCV_LIBS}
         cuda_interface
 )
 
