@@ -38,7 +38,7 @@ public:
 
     bool usingCamera();
 
-    Mat getImageFromOpenCV();
+    string getImagePath();
 };
 
 

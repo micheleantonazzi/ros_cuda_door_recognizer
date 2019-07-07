@@ -28,7 +28,6 @@ bool Parameters::usingCamera() {
     return this->camera;
 }
 
-Mat Parameters::getImageFromOpenCV() {
-    return this->camera ? Mat() :
-           imread(this->image_path).;
+string Parameters::getImagePath() {
+    return this->image_path;
 }
