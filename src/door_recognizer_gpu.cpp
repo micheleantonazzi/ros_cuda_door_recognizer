@@ -9,7 +9,7 @@ using namespace ros;
 int main(int argc, char **argv){
 
     ros::init(argc, argv, "services");
-    ROS_INFO_STREAM("Hello ROS");
+    ROS_INFO_STREAM("Started door recognizer node that uses gpu");
     CudaInterface c = CudaInterface();
     c.test_cuda();
 }
