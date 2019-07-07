@@ -28,7 +28,7 @@ public:
 
     // Return true if the image is acquired by camera, false otherwise
     bool acquireImage();
-    Mat getOpencvImage();
+    Mat getOpenCVImage();
 };
 
 

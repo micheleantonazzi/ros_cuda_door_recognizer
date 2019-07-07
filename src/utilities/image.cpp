@@ -18,7 +18,7 @@ bool Image::acquireImage() {
     return this->image_acquire;
 }
 
-Mat Image::getOpencvImage() {
+Mat Image::getOpenCVImage() {
     if(this->image_acquire != this->IMAGE_NOT_ACQUIRED && this->image_acquire == this->IMAGE_ACQUIRED_BY_OPENCV)
         return this->image_from_opencv;
     else
