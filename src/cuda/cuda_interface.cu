@@ -2,6 +2,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include "cuda_interface.h"
+#include "utilities/gpu_utilities.h"
 
 __global__ void test_kernel(){
     printf("Hello from GPU\n");
@@ -9,5 +10,5 @@ __global__ void test_kernel(){
 
 void CudaInterface::test_cuda(){
     test_kernel<<<1, 10>>>();
-    cudaDeviceSynchronize();
+    CHECK(cudaDeviceSynchronize());
 }
