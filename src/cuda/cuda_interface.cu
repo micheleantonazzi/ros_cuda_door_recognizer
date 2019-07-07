@@ -4,18 +4,7 @@
 #include "cuda_interface.h"
 
 __global__ void test_kernel(){
-    printf("ciao\n");
-    unsigned int threadId = threadIdx.x;
-    unsigned int totThread = gridDim.x * blockDim.x;
-
-
-    printf("%i\n", totThread);
-
-    __syncthreads();
-    unsigned int operationNumber = 10 / totThread;
-    for(int i = 0; i < operationNumber; ++i)
-        printf("operation\n");
-
+    printf("Hello from GPU\n");
 }
 
 void CudaInterface::test_cuda(){
