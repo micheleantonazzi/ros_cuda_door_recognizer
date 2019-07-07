@@ -16,11 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(OpenCV REQUIRED)
 
 find_package(CUDA REQUIRED)
-<<<<<<< HEAD
-CUDA_ADD_LIBRARY(kernels_cuda ${LIB_TYPE} src/cuda/cuda_door_recognizer.cu)
-=======
+
 CUDA_ADD_LIBRARY(cuda_interface ${LIB_TYPE} src/cuda/cuda_interface.cu)
->>>>>>> develop
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -181,7 +178,6 @@ target_link_libraries(test_performance
         ${catkin_LIBRARIES}
         ${OpenCV_LIBS}
         cuda_interface
->>>>>>> develop
 )
 
 #############
