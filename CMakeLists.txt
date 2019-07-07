@@ -136,9 +136,14 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(door_recognizer_gpu src/door_recognizer_gpu.cpp)
+
 add_executable(door_recognizer src/door_recognizer.cpp)
 
+add_executable(test_performance src/test_performance.cpp)
+
 add_dependencies(door_recognizer_gpu cuda_interface)
+
+add_dependencies(test_performance cuda_interface)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -158,6 +163,11 @@ target_link_libraries(door_recognizer_gpu
 
 target_link_libraries(door_recognizer
         ${catkin_LIBRARIES}
+)
+
+target_link_libraries(test_performance
+        ${catkin_LIBRARIES}
+        cuda_interface
 )
 
 #############
