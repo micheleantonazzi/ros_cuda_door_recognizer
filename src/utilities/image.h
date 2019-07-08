@@ -28,6 +28,10 @@ public:
 
     // Return true if the image is acquired by camera, false otherwise
     bool acquireImage();
+
+    int getWidth();
+    int getHeight();
+
     Mat getOpenCVImage();
 };
 

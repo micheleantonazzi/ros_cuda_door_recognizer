@@ -18,6 +18,14 @@ bool Image::acquireImage() {
     return this->image_acquire;
 }
 
+int Image::getWidth() {
+    return this->width;
+}
+
+int Image::getHeight() {
+    return this->height;
+}
+
 Mat Image::getOpenCVImage() {
     if(this->image_acquire != this->IMAGE_NOT_ACQUIRED && this->image_acquire == this->IMAGE_ACQUIRED_BY_OPENCV)
         return this->image_from_opencv;
