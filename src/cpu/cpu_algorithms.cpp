@@ -23,14 +23,23 @@ void CpuAlgorithms::toGrayScale(unsigned char *pixels, int width, int height) {
     }
 }
 
-void CpuAlgorithms::toGrayScale(sensor_msgs::Image& destination, const sensor_msgs::Image& source){
-    int len = source.width * source.height * 3;
-    const uint8_t * s = source.data.data();
+void CpuAlgorithms::toGrayScale(uint8_t *destination, const uint8_t *source, int width, int height){
+    int len = width * height * 3;
 
     for (int i = 0; i < len; i += 3) {
-        unsigned char average = ( *(s++) + *(s++) + *(s++) ) / 3;
-        destination.data.push_back(average);
-        destination.data.push_back(average);
-        destination.data.push_back(average);
+        unsigned char average = ( *(source++) + *(source++) + *(source++) ) / 3;
+        *(destination++) = average;
+        *(destination++) = average;
+        *(destination++) = average;
+    }
+}
+
+void CpuAlgorithms::copyArrayToImage(sensor_msgs::Image& destination, uint8_t *source){
+    int len = destination.width * destination.height * 3;
+
+    for (int i = 0; i < len; i += 3) {
+        destination.data.push_back(*(source++));
+        destination.data.push_back(*(source++));
+        destination.data.push_back(*(source++));
     }
 }
