@@ -24,10 +24,11 @@ void CpuAlgorithms::toGrayScale(unsigned char *pixels, int width, int height) {
 }
 
 void CpuAlgorithms::toGrayScale(sensor_msgs::Image& destination, const sensor_msgs::Image& source){
-    std::vector<unsigned char, std::allocator<unsigned char>>::const_iterator iterator = source.data.begin();
+    int len = source.width * source.height * 3;
+    const uint8_t * s = source.data.data();
 
-    for (iterator; iterator != source.data.end();){
-        unsigned char average = (*(iterator++) + *(iterator++) + *(iterator++)) / 3;
+    for (int i = 0; i < len; i += 3) {
+        unsigned char average = ( *(s++) + *(s++) + *(s++) ) / 3;
         destination.data.push_back(average);
         destination.data.push_back(average);
         destination.data.push_back(average);
