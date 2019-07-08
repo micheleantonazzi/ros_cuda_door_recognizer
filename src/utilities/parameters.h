@@ -17,6 +17,7 @@ private:
 
     static string DOOR_HIGH_RES;
     static string DOOR_MED_RES;
+    static string CAMERA_TOPIC;
 
     // If you want to analise a frame acquired by camera set the variable true, otherwise false
     bool camera;
