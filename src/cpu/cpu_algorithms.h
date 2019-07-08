@@ -14,6 +14,7 @@ public:
     static CpuAlgorithms& getInstance();
 
     void toGrayScale(unsigned char*, int, int);
+    void toGrayScale(sensor_msgs::Image&, const sensor_msgs::Image&);
 };
 
 
