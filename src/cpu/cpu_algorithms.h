@@ -5,9 +5,15 @@
 #ifndef ROS_CUDA_DOOR_RECOGNIZER_CPU_ALGORITMS_H
 #define ROS_CUDA_DOOR_RECOGNIZER_CPU_ALGORITMS_H
 
+// SINGLETON
+class CpuAlgorithms {
+private:
+    CpuAlgorithms();
 
-class cpu_algorithms {
+public:
+    static CpuAlgorithms& getInstance();
 
+    void toGrayScale(unsigned char*, int, int);
 };
 
 
