@@ -21,7 +21,7 @@ void Parameters::getValues() {
     NodeHandle nodeHandle("~");
 
     nodeHandle.param<bool>("camera", this->camera, false);
-    nodeHandle.param<string>("image", this->image_path, DOOR_MED_RES);
+    nodeHandle.param<string>("image", this->image_path, DOOR_HIGH_RES);
 }
 
 bool Parameters::usingCamera() {
@@ -30,4 +30,8 @@ bool Parameters::usingCamera() {
 
 string Parameters::getImagePath() {
     return this->image_path;
+}
+
+string Parameters::getTopic(){
+    return this->topic;
 }

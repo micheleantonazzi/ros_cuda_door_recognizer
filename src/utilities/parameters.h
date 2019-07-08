@@ -39,6 +39,8 @@ public:
     bool usingCamera();
 
     string getImagePath();
+
+    string getTopic();
 };
 
 
