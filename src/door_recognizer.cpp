@@ -8,6 +8,7 @@
 
 #include "utilities/parameters.h"
 #include "cpu/cpu_algorithms.h"
+#include "utilities/time_utilities.h"
 
 using namespace ros;
 using namespace std;
@@ -34,10 +35,21 @@ int main(int argc, char **argv){
 }
 
 void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGrayScale){
-    sensor_msgs::Image imageGray;
-    imageGray.height = image->height;
-    imageGray.width = image->width;
-    imageGray.encoding = image->encoding;
-    CpuAlgorithms::getInstance().toGrayScale(imageGray, *image);
-    publisherGrayScale.publish(imageGray);
+
+    // Create and set the new image
+    sensor_msgs::Image imageFinal;
+    imageFinal.height = image->height;
+    imageFinal.width = image->width;
+    imageFinal.encoding = image->encoding;
+
+    // Array with pixels
+    uint8_t *imageFinalData = new uint8_t[imageFinal.height * imageFinal.width * 3];
+
+    // Image to gray scale
+    CpuAlgorithms::getInstance().toGrayScale(imageFinalData, image->data.data(), imageFinal.width, imageFinal.height);
+
+    // Copy data to sensor_msgs::Image
+    CpuAlgorithms::getInstance().copyArrayToImage(imageFinal, imageFinalData);
+
+    publisherGrayScale.publish(imageFinal);
 }
