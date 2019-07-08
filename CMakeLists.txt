@@ -140,7 +140,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(door_recognizer_gpu src/door_recognizer_gpu.cpp)
 
-add_executable(door_recognizer src/door_recognizer.cpp)
+add_executable(door_recognizer src/door_recognizer.cpp src/utilities/parameters.h src/utilities/parameters.cpp)
 
 add_executable(test_performance src/test_performance.cpp src/utilities/parameters.h src/utilities/parameters.cpp
         src/utilities/image.h src/utilities/image.cpp src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp)
