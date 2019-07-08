@@ -167,6 +167,7 @@ target_link_libraries(door_recognizer_gpu
 
 target_link_libraries(door_recognizer
         ${catkin_LIBRARIES}
+        ${OpenCV_LIBS}
 )
 
 target_link_libraries(test_performance
