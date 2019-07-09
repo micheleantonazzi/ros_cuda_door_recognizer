@@ -10,9 +10,17 @@
     <!-- camera: if you want to acquire an image from disk using OpenCV, set the absolute path of that image -->
     <arg name="image_path" default="/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/test/door_high_res.jpg" />
 
+    <!-- Number of block used to run the kernel that convert an image to gray scale -->
+    <arg name="to_gray_scale_num_block" default="1" />
+
+    <!-- Number of thread per block used to run the kernel that convert an image to gray scale -->
+    <arg name="to_gray_scale_num_thread" default="1" />
+
     <node pkg="ros_cuda_door_recognizer" type="test_performance" name="test_performance" output="screen">
         <param name="camera" value="$(arg camera)" />
         <param name="topic" value="$(arg topic)" />
         <param name="image_path" value="$(arg image_path)" />
+        <param name="to_gray_scale_num_block" value="$(arg to_gray_scale_num_block)" />
+        <param name="to_gray_scale_num_thread" value="$(arg to_gray_scale_num_thread)" />
     </node>
 </launch>

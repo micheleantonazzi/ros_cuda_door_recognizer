@@ -28,6 +28,12 @@ private:
     // If you don't use the camera specify the image's path
     string image_path;
 
+    // Number of block used to run the kernel that convert an image to gray scale
+    int to_gray_scale_num_block;
+
+    // Number of thread per block used to run the kernel that convert an image to gray scale
+    int to_gray_scale_num_thread;
+
     Parameters();
 
 public:
