@@ -40,3 +40,11 @@ string Parameters::getImagePath() {
 string Parameters::getTopic(){
     return this->topic;
 }
+
+int Parameters::getToGrayScaleNumBlock() {
+    return this->to_gray_scale_num_block;
+}
+
+int Parameters::getToGrayScaleNumThread() {
+    return this->to_gray_scale_num_thread;
+}

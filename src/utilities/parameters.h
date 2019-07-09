@@ -48,6 +48,10 @@ public:
     string getImagePath();
 
     string getTopic();
+
+    int getToGrayScaleNumBlock();
+
+    int getToGrayScaleNumThread();
 };
 
 
