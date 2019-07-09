@@ -8,7 +8,7 @@
     <arg name="topic" default="/usb_cam/image_raw" />
 
     <!-- camera: if you want to acquire an image from disk using OpenCV, set the absolute path of that image -->
-    <arg name="image_path" default="" />
+    <arg name="image_path" default="/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/test/door_high_res.jpg" />
 
     <node pkg="ros_cuda_door_recognizer" type="test_performance" name="test_performance" output="screen">
         <param name="camera" value="$(arg camera)" />
