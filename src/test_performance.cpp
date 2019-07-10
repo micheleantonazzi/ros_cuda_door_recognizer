@@ -9,6 +9,7 @@
 #include "utilities/image.h"
 #include "cpu/cpu_algorithms.h"
 #include "utilities/time_utilities.h"
+#include "cuda/cuda_interface.h"
 
 using namespace ros;
 using namespace cv;
@@ -20,8 +21,7 @@ int main(int argc, char **argv){
 
     Parameters::getInstance().getValues();
 
-    Image *image = new Image();
-    image->acquireImage();
+
 
     if(Parameters::getInstance().usingCamera()){
 
@@ -29,6 +29,9 @@ int main(int argc, char **argv){
     else {
 
         //CPU
+
+        Image *image = new Image();
+        image->acquireImage();
 
         cout << "Analyze image from OpenCV:\n"
                 " - width: " << image->getWidth() << "\n" <<
@@ -40,10 +43,28 @@ int main(int argc, char **argv){
         double time_end_gray_scale = seconds();
         cout << " - convert to gray scale: " << time_end_gray_scale - time_start_gray_scale << "\n";
 
+        delete image;
+
         //GPU
 
+        image = new Image();
+        image->acquireImage();
 
+        cout << "\nAnalyze image from OpenCV:\n"
+                " - width: " << image->getWidth() << "\n" <<
+                " - height: " << image->getHeight() << "\n" <<
+                "Operations in GPU:\n";
+
+        cout << " - convert to gray scale: " << Parameters::getInstance().getToGrayScaleNumBlock() <<
+                " blocks, " << Parameters::getInstance().getToGrayScaleNumThread() <<
+                " thread per block:\n";
+
+        double timeToGrayScale = CudaInterface::toGrayScale(image->getOpenCVImage().data, image->getOpenCVImage().data, image->getWidth(),
+                image->getHeight(), Parameters::getInstance().getToGrayScaleNumBlock(), Parameters::getInstance().getToGrayScaleNumThread());
+
+        imwrite("ciao.jpg", image->getOpenCVImage());
+
+        cout << timeToGrayScale << endl;
     }
 
-    delete image;
 }

@@ -24,8 +24,8 @@ void Parameters::getValues() {
     nodeHandle.param<bool>("camera", this->camera, false);
     nodeHandle.param<string>("image_path", this->image_path, DOOR_HIGH_RES);
     nodeHandle.param<string>("topic", this->topic, CAMERA_TOPIC);
-    nodeHandle.param<int>("to_gray_scale_num_block", this->to_gray_scale_num_block, 1);
-    nodeHandle.param<int>("to_gray_scale_num_thread", this->to_gray_scale_num_thread, 1);
+    nodeHandle.param<int>("to_gray_scale_num_block", this->to_gray_scale_num_block, 3000);
+    nodeHandle.param<int>("to_gray_scale_num_thread", this->to_gray_scale_num_thread, 1024);
 
 }
 
