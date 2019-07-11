@@ -18,17 +18,21 @@ void CudaInterface::test_cuda(){
 __global__ void to_gray_scale(unsigned char *destination, unsigned char *source, int width, int height){
     int threadTot = gridDim.x * blockDim.x;
 
-    int pixelPerThread = (width * height * 3 / threadTot) + 1;
+    int imageSize = width * height * 3;
+
+    int pixelPerThread = (imageSize / threadTot) + 1;
 
     int threadId = blockDim.x * blockIdx.x + threadIdx.x;
 
-    // Move the pointer to the correct position
-
     if (threadId * pixelPerThread < width * height * 3){
+
+        // Move the pointer to the correct position
         source += threadId * pixelPerThread;
         destination += threadId * pixelPerThread;
-        int i = 0;
-        for(i; i < pixelPerThread && threadId * pixelPerThread + i < width * height * 3; i += 3){
+
+        int limit = threadId * pixelPerThread;
+
+        for(int i = 0; i < pixelPerThread && limit + i < imageSize; i += 3){
             unsigned char average = (*(source++) + *(source++) + *(source++)) / 3;
             *(destination++) = average;
             *(destination++) = average;
