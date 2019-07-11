@@ -20,19 +20,19 @@ __global__ void to_gray_scale(unsigned char *destination, unsigned char *source,
 
     int imageSize = width * height * 3;
 
-    int pixelPerThread = (imageSize / threadTot) + 1;
+    int valuesPerThread = (imageSize / threadTot) + 3;
 
     int threadId = blockDim.x * blockIdx.x + threadIdx.x;
 
-    if (threadId * pixelPerThread < width * height * 3){
+    if (threadId * valuesPerThread < imageSize){
 
         // Move the pointer to the correct position
-        source += threadId * pixelPerThread;
-        destination += threadId * pixelPerThread;
+        source += threadId * valuesPerThread;
+        destination += threadId * valuesPerThread;
 
-        int limit = threadId * pixelPerThread;
+        int start = threadId * valuesPerThread;
 
-        for(int i = 0; i < pixelPerThread && limit + i < imageSize; i += 3){
+        for(int i = 0; i < valuesPerThread && start + i < imageSize; i += 3){
             unsigned char average = (*(source++) + *(source++) + *(source++)) / 3;
             *(destination++) = average;
             *(destination++) = average;
