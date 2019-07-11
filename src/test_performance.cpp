@@ -62,14 +62,6 @@ int main(int argc, char **argv){
 
         imwrite("ciao.jpg", image->getOpenCVImage());
 
-        for(int i = 0; i < image->getWidth() * image->getHeight() * 3; i++){
-            if (i % 3 == 0)
-                printf("| ");
-            printf("%i ", *(image->getOpenCVImage().data + i));
-
-        }
-
-
         cout << timeToGrayScale << endl;
     }
 
