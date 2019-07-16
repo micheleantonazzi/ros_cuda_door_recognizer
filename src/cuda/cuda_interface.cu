@@ -15,31 +15,28 @@ void CudaInterface::test_cuda(){
     CHECK(cudaDeviceSynchronize());
 }
 
-Pixel24* CudaInterface::getPixelArray(unsigned char *imageData, int width, int height) {
+Pixel* CudaInterface::getPixelArray(unsigned char *imageData, int width, int height) {
     int imageSize = width * height;
 
-    Pixel24 *pixelArray;
+    Pixel *pixelArray;
 
-    cudaMallocHost(&pixelArray, imageSize * sizeof(Pixel24));
+    cudaMallocHost(&pixelArray, imageSize * sizeof(Pixel));
 
-    for(int i = 0; i < imageSize; ++i){
-        pixelArray[i].R = *(imageData++);
-        pixelArray[i].G = *(imageData++);
-        pixelArray[i].B = *(imageData++);
-    }
+    for(int i = 0; i < imageSize; ++i)
+        pixelArray[i] = (*(imageData++) << 16) + (*(imageData++) << 8) + *(imageData++);
 
     return pixelArray;
 
 }
 
-void CudaInterface::pixelArrayToCharArray(unsigned char *imageData, Pixel24 *source, int width, int height) {
+void CudaInterface::pixelArrayToCharArray(unsigned char *imageData, Pixel *source, int width, int height) {
     int imageSize = width * height;
 
     for (int i = 0; i < imageSize; ++i) {
-        Pixel24 pixel = *(source++);
-        *(imageData++) = pixel.R;
-        *(imageData++) = pixel.G;
-        *(imageData++) = pixel.B;
+        Pixel pixel = *(source++);
+        *(imageData++) = pixel >> 16;
+        *(imageData++) = pixel >> 8;
+        *(imageData++) = pixel;
     }
 }
 
@@ -83,7 +80,7 @@ double CudaInterface::toGrayScale(unsigned char *destination, unsigned char *sou
     return time;
 }
 
-__global__ void to_gray_scale(Pixel24 *destination, Pixel24 *source, int width, int height){
+__global__ void to_gray_scale(Pixel *destination, Pixel *source, int width, int height){
 
     int totThread = gridDim.x * blockDim.x;
 
@@ -113,20 +110,23 @@ __global__ void to_gray_scale(Pixel24 *destination, Pixel24 *source, int width, 
 
         for(int i = 0; i < jumpPerThreadGroup && start + i * threadGroupDim < imageSize; i++){
 
+            Pixel pixel = *source;
+
+            unsigned char R = pixel >> 16;
+            unsigned char G = pixel >> 8;
+            unsigned char B = pixel;
+
+            unsigned char average = (R + G + B) / 3;
+
+            *destination = Pixel((average << 16) + (average << 8) + average);
+
             source += threadGroupDim;
             destination += threadGroupDim;
-
-            Pixel24 pixel24 = *source;
-            unsigned char average = (pixel24.R + pixel24.G + pixel24.B) / 3;
-            pixel24.R = average;
-            pixel24.G = average;
-            pixel24.B = average;
-            *destination = pixel24;
         }
     }
 }
 
-double CudaInterface::toGrayScale(Pixel24 *destination, Pixel24 *source, int width, int height, int numBlocks, int numThread) {
+double CudaInterface::toGrayScale(Pixel *destination, Pixel *source, int width, int height, int numBlocks, int numThread) {
     double time = seconds();
 
     to_gray_scale<<<numBlocks, numThread>>>(destination, source, width, height);
