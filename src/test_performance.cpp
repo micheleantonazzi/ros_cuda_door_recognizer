@@ -58,26 +58,30 @@ int main(int argc, char **argv){
                 " blocks, " << Parameters::getInstance().getToGrayScaleNumThread() <<
                 " thread per block:\n";
 
-        int sizeImage = image->getOpenCVImage().rows * image->getOpenCVImage().cols * 3;
-        unsigned char *sourceGpu;
+        int sizeImage = image->getHeight() * image->getWidth();
 
+        Pixel24 *imageSource = CudaInterface::getPixelArray(image->getOpenCVImage().data, image->getWidth(), image->getHeight());
+        Pixel24 *imageSourceGpu;
         // ----------- Convert to gray scale ---------------- //
 
-        unsigned char *destinationGrayScaleGpu;
+        Pixel24 *destinationGrayScaleGpu;
 
-        cudaMalloc(&sourceGpu, sizeof(unsigned char) * sizeImage);
-        cudaMalloc(&destinationGrayScaleGpu, sizeof(unsigned char) * sizeImage);
+        cudaMalloc(&imageSourceGpu, sizeof(Pixel24) * sizeImage);
+        cudaMalloc(&destinationGrayScaleGpu, sizeof(Pixel24) * sizeImage);
 
-        cudaMemcpy(sourceGpu, image->getOpenCVImage().data, sizeImage * sizeof(unsigned char), cudaMemcpyHostToDevice);
+        cudaMemcpy(imageSourceGpu, imageSource, sizeImage * sizeof(Pixel24), cudaMemcpyHostToDevice);
 
-        double timeToGrayScale = CudaInterface::toGrayScale(destinationGrayScaleGpu, sourceGpu, image->getWidth(),
+        double timeToGrayScale = CudaInterface::toGrayScale(destinationGrayScaleGpu, imageSourceGpu, image->getWidth(),
                 image->getHeight(), Parameters::getInstance().getToGrayScaleNumBlock(), Parameters::getInstance().getToGrayScaleNumThread());
 
-        cudaMemcpy(image->getOpenCVImage().data, destinationGrayScaleGpu, sizeImage * sizeof(unsigned char), cudaMemcpyDeviceToHost);
+        cudaMemcpy(imageSource, destinationGrayScaleGpu, sizeImage * sizeof(Pixel24), cudaMemcpyDeviceToHost);
+
+        CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
 
         imwrite("ciao.jpg", image->getOpenCVImage());
 
-        cudaFree(sourceGpu);
+        cudaFreeHost(imageSource);
+        cudaFree(imageSourceGpu);
         cudaFree(destinationGrayScaleGpu);
 
         cout << timeToGrayScale << endl;
