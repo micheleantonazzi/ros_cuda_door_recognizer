@@ -8,10 +8,11 @@
 class CudaInterface{
 
 public:
+
     static void test_cuda();
 
     // Return the time to execute del kernel
-    static double toGrayScale(unsigned char*, unsigned char*, int, int, int, int);
+    static double toGrayScale(unsigned char *destination, unsigned char *source, int width, int height, int numBlocks, int numThread);
 };
 
 
