@@ -84,29 +84,44 @@ double CudaInterface::toGrayScale(unsigned char *destination, unsigned char *sou
 }
 
 __global__ void to_gray_scale(Pixel24 *destination, Pixel24 *source, int width, int height){
-    int threadTot = gridDim.x * blockDim.x;
+
+    int totThread = gridDim.x * blockDim.x;
+
+    // Thread group is 32 (the warp dimension) if the total number of thread is equal or higher than warp dimension (32)
+    int threadGroupDim = totThread >= 32 ? 32 : totThread;
 
     int imageSize = width * height;
 
-    int valuesPerThread = (imageSize / threadTot) + 1;
+    int jumpPerThreadGroup = (imageSize / totThread) + 1;
 
     int threadId = blockDim.x * blockIdx.x + threadIdx.x;
 
-    if (threadId * valuesPerThread < imageSize){
+    // The group of a thread
+    int threadGroup = threadId / threadGroupDim;
+
+    // The number if thread inside his group
+    int threadIdInGroup = (blockDim.x * blockIdx.x + threadIdx.x) % threadGroupDim;
+
+    if (threadGroupDim * threadGroup * jumpPerThreadGroup + threadIdInGroup < imageSize){
 
         // Move the pointer to the correct position
-        source += threadId * valuesPerThread;
-        destination += threadId * valuesPerThread;
+        // In this way the accesses to global memory are aligned and coalescent
+        source += threadGroup * threadGroupDim * jumpPerThreadGroup + threadIdInGroup;
+        destination += threadGroup * threadGroupDim * jumpPerThreadGroup + threadIdInGroup;
 
-        int start = threadId * valuesPerThread;
+        int start = threadGroup * jumpPerThreadGroup * threadGroupDim + threadIdInGroup;
 
-        for(int i = 0; i < valuesPerThread && start + i < imageSize; i++){
-            Pixel24 pixel24 = *(source++);
+        for(int i = 0; i < jumpPerThreadGroup && start + i * threadGroupDim < imageSize; i++){
+
+            source += threadGroupDim;
+            destination += threadGroupDim;
+
+            Pixel24 pixel24 = *source;
             unsigned char average = (pixel24.R + pixel24.G + pixel24.B) / 3;
             pixel24.R = average;
             pixel24.G = average;
             pixel24.B = average;
-            *(destination++) = pixel24;
+            *destination = pixel24;
         }
     }
 }
