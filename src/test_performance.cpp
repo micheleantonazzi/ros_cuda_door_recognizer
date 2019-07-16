@@ -5,6 +5,7 @@
 #include <ros/ros.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <cuda_runtime.h>
 #include "utilities/parameters.h"
 #include "utilities/image.h"
 #include "cpu/cpu_algorithms.h"
@@ -57,10 +58,27 @@ int main(int argc, char **argv){
                 " blocks, " << Parameters::getInstance().getToGrayScaleNumThread() <<
                 " thread per block:\n";
 
-        double timeToGrayScale = CudaInterface::toGrayScale(image->getOpenCVImage().data, image->getOpenCVImage().data, image->getWidth(),
+        int sizeImage = image->getOpenCVImage().rows * image->getOpenCVImage().cols * 3;
+        unsigned char *sourceGpu;
+
+        // ----------- Convert to gray scale ---------------- //
+
+        unsigned char *destinationGrayScaleGpu;
+
+        cudaMalloc(&sourceGpu, sizeof(unsigned char) * sizeImage);
+        cudaMalloc(&destinationGrayScaleGpu, sizeof(unsigned char) * sizeImage);
+
+        cudaMemcpy(sourceGpu, image->getOpenCVImage().data, sizeImage * sizeof(unsigned char), cudaMemcpyHostToDevice);
+
+        double timeToGrayScale = CudaInterface::toGrayScale(destinationGrayScaleGpu, sourceGpu, image->getWidth(),
                 image->getHeight(), Parameters::getInstance().getToGrayScaleNumBlock(), Parameters::getInstance().getToGrayScaleNumThread());
 
+        cudaMemcpy(image->getOpenCVImage().data, destinationGrayScaleGpu, sizeImage * sizeof(unsigned char), cudaMemcpyDeviceToHost);
+
         imwrite("ciao.jpg", image->getOpenCVImage());
+
+        cudaFree(sourceGpu);
+        cudaFree(destinationGrayScaleGpu);
 
         cout << timeToGrayScale << endl;
     }

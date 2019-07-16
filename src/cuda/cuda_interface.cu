@@ -44,28 +44,13 @@ __global__ void to_gray_scale(unsigned char *destination, unsigned char *source,
 
 double CudaInterface::toGrayScale(unsigned char *destination, unsigned char *source, int width, int height, int numBlocks, int numThread) {
 
-    int sizeImage = width * height * 3;
-
-    unsigned char *sourceGpu;
-    unsigned char *destinationGpu;
-
-    cudaMalloc(&sourceGpu, sizeof(unsigned char) * sizeImage);
-    cudaMalloc(&destinationGpu, sizeof(unsigned char) * sizeImage);
-
-    cudaMemcpy(sourceGpu, source, sizeImage * sizeof(unsigned char), cudaMemcpyHostToDevice);
-
     double time = seconds();
 
-    to_gray_scale<<<numBlocks, numThread>>>(destinationGpu, sourceGpu, width, height);
+    to_gray_scale<<<numBlocks, numThread>>>(destination, source, width, height);
 
     cudaDeviceSynchronize();
 
     time = seconds() - time;
-
-    cudaMemcpy(destination, destinationGpu, sizeImage * sizeof(unsigned char), cudaMemcpyDeviceToHost);
-
-    cudaFree(sourceGpu);
-    cudaFree(destinationGpu);
 
     return time;
 }

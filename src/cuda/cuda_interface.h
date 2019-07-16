@@ -11,6 +11,7 @@ public:
 
     static void test_cuda();
 
+    // Convert an image in gray scale
     // Return the time to execute del kernel
     static double toGrayScale(unsigned char *destination, unsigned char *source, int width, int height, int numBlocks, int numThread);
 };
