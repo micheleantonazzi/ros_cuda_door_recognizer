@@ -15,7 +15,7 @@ public:
 
     // Build an array of Pixel24 that contains image data.
     // The array is allocated in PINNED MEMORY
-    static Pixel* getPixelArray(unsigned char *imageData, int width, int height);
+    static Pixel* getPixelArray(const unsigned char *imageData, int width, int height);
 
     static void pixelArrayToCharArray(unsigned char *imageData, Pixel *source, int width, int height);
 

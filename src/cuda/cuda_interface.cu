@@ -29,7 +29,7 @@ void CudaInterface::test_cuda(){
     cudaDeviceReset();
 }
 
-Pixel* CudaInterface::getPixelArray(unsigned char *imageData, int width, int height) {
+Pixel* CudaInterface::getPixelArray(const unsigned char *imageData, int width, int height) {
     int imageSize = width * height;
 
     Pixel *pixelArray;
