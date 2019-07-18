@@ -9,6 +9,8 @@
 class Utilities {
 public:
     static double seconds();
+
+    static float** getGaussianMatrix(int size, float alpha);
 };
 
 
