@@ -43,3 +43,24 @@ void CpuAlgorithms::copyArrayToImage(sensor_msgs::Image& destination, uint8_t *s
         destination.data.push_back(*(source++));
     }
 }
+
+void CpuAlgorithms::gaussianFilter(unsigned char *destination, unsigned char *source, float **matrix, int width,
+                                   int height, int matrixDim) {
+
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            float value = 0;
+            for (int k = -matrixDim / 2; k <= matrixDim / 2; ++k) {
+                for (int z = -matrixDim / 2; z <= matrixDim / 2; ++z) {
+                    if(i + k >= 0 && i + k < height &&
+                            j + z >= 0 && j + z < width) {
+                        value += *(source + ((i + k) * width + j + z) * 3) * matrix[k + matrixDim / 2][z + matrixDim / 2];
+                    }
+                }
+            }
+            *(destination + (i * width + j) * 3) = value;
+            *(destination + (i * width + j) * 3 + 1) = value;
+            *(destination + (i * width + j) * 3 + 2)  = value;
+        }
+    }
+}
