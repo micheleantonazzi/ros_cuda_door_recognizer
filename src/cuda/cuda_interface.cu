@@ -11,8 +11,22 @@ __global__ void test_kernel(){
 }
 
 void CudaInterface::test_cuda(){
-    test_kernel<<<1, 10>>>();
-    CHECK(cudaDeviceSynchronize());
+
+    const int num_streams = 8;
+
+    cudaStream_t streams[num_streams];
+    float *data[num_streams];
+
+    for (int i = 0; i < num_streams; i++) {
+        cudaStreamCreateWithFlags(&streams[i], cudaStreamNonBlocking);
+
+        // launch one worker kernel per stream
+        test_kernel<<<1, 64, 0, streams[i]>>>();
+
+        // launch a dummy kernel on the default stream
+        test_kernel<<<1, 1, 0, 0>>>();
+    }
+    cudaDeviceReset();
 }
 
 Pixel* CudaInterface::getPixelArray(unsigned char *imageData, int width, int height) {
