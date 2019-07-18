@@ -6,8 +6,11 @@
 #include "utilities/gpu_utilities.h"
 #include "../utilities/time_utilities.h"
 
-__global__ void test_kernel(){
-    printf("Hello from\n");
+__global__ void test_kernel(int num){
+    for (int i = 0; i < 100; ++i) {
+        printf("Hello fromm %i\n", num);
+    }
+
 }
 
 void CudaInterface::test_cuda(){
@@ -15,16 +18,15 @@ void CudaInterface::test_cuda(){
     const int num_streams = 8;
 
     cudaStream_t streams[num_streams];
-    float *data[num_streams];
-
+    cudaStreamCreateWithFlags(&streams[0], cudaStreamNonBlocking);
     for (int i = 0; i < num_streams; i++) {
-        cudaStreamCreateWithFlags(&streams[i], cudaStreamNonBlocking);
+
 
         // launch one worker kernel per stream
-        test_kernel<<<1, 64, 0, streams[i]>>>();
+        test_kernel<<<1, 64, 0, streams[0]>>>(i);
 
         // launch a dummy kernel on the default stream
-        test_kernel<<<1, 1, 0, 0>>>();
+        //test_kernel<<<1, 1, 0, 0>>>();
     }
     cudaDeviceReset();
 }
@@ -43,7 +45,7 @@ Pixel* CudaInterface::getPixelArray(const unsigned char *imageData, int width, i
 
 }
 
-void CudaInterface::pixelArrayToCharArray(unsigned char *imageData, Pixel *source, int width, int height) {
+void CudaInterface::pixelArrayToCharArray(const unsigned char *imageData, Pixel *source, int width, int height) {
     int imageSize = width * height;
 
     for (int i = 0; i < imageSize; ++i) {
