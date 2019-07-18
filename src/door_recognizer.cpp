@@ -21,11 +21,10 @@ int main(int argc, char **argv){
     ROS_INFO_STREAM("Started door recognizer node");
 
     Parameters::getInstance().getValues();
-    cout << Parameters::getInstance().getTopic() << endl;
 
     NodeHandle node;
 
-    Publisher publisherGrayScale = node.advertise<sensor_msgs::Image>("gray_scale", 10);
+    Publisher publisherGrayScale = node.advertise<sensor_msgs::Image>("door_recognizer/gray_scale", 10);
 
     Subscriber subscriber = node.subscribe<sensor_msgs::Image>(Parameters::getInstance().getTopic(), 10,
             boost::bind(readFrame, _1, publisherGrayScale));
