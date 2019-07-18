@@ -140,10 +140,10 @@ __global__ void to_gray_scale(Pixel *destination, Pixel *source, int width, int 
     }
 }
 
-double CudaInterface::toGrayScale(Pixel *destination, Pixel *source, int width, int height, int numBlocks, int numThread) {
+double CudaInterface::toGrayScale(Pixel *destination, Pixel *source, int width, int height, int numBlocks, int numThread, const cudaStream_t &stream) {
     double time = seconds();
 
-    to_gray_scale<<<numBlocks, numThread>>>(destination, source, width, height);
+    to_gray_scale<<<numBlocks, numThread, 0, stream>>>(destination, source, width, height);
 
     cudaDeviceSynchronize();
 

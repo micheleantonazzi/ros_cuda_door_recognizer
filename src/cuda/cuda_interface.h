@@ -24,7 +24,7 @@ public:
     static double toGrayScale(unsigned char *destination, unsigned char *source, int width, int height, int numBlocks, int numThread);
 
     // Convert an image in gray scale using type Pixel32 to improve the access memory performance
-    static double toGrayScale(Pixel *destination, Pixel *source, int width, int height, int numBlocks, int numThread);
+    static double toGrayScale(Pixel *destination, Pixel *source, int width, int height, int numBlocks, int numThread, const cudaStream_t &stream = 0);
 };
 
 
