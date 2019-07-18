@@ -21,7 +21,6 @@ int main(int argc, char **argv){
     ROS_INFO_STREAM("Started door recognizer node");
 
     Parameters::getInstance().getValues();
-    cout << Parameters::getInstance().getTopic() << endl;
 
     NodeHandle node;
 
