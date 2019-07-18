@@ -37,12 +37,25 @@ int main(int argc, char **argv){
                 " - height: " << image->getHeight() << "\n" <<
                 "Operations in CPU:\n";
 
-        double time_start_gray_scale = Utilities::seconds();
+        double time = Utilities::seconds();
         CpuAlgorithms::getInstance().toGrayScale(image->getOpenCVImage().data, image->getWidth(), image->getHeight());
-        double time_end_gray_scale = Utilities::seconds();
-        cout << " - convert to gray scale: " << time_end_gray_scale - time_start_gray_scale << "\n";
+        time = Utilities::seconds() - time;
+        cout << " - convert to gray scale: " << time << "\n";
 
-        imwrite("ciao2.jpg", image->getOpenCVImage());
+        imwrite("cpu-grayscale.jpg", image->getOpenCVImage());
+
+        Mat imageGaussian(image->getOpenCVImage());
+
+        float **gaussianFilter = Utilities::getGaussianMatrix(5, 0.84);
+
+        time = Utilities::seconds();
+        CpuAlgorithms::getInstance().gaussianFilter(imageGaussian.data, image->getOpenCVImage().data, gaussianFilter, image->getWidth(),
+                image->getHeight(), 5);
+        time = Utilities::seconds() - time;
+
+        cout << " - apply gaussian filter: " << time << "\n";
+
+        imwrite("cpu-gaussian.jpg", imageGaussian);
 
         delete image;
 
@@ -92,7 +105,7 @@ int main(int argc, char **argv){
 
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
 
-        imwrite("ciao.jpg", image->getOpenCVImage());
+        imwrite("gpu-grayscale.jpg", image->getOpenCVImage());
 
         cudaFreeHost(imageSource);
         cudaFree(imageSourceGpu);
@@ -100,5 +113,4 @@ int main(int argc, char **argv){
 
         cout << timeToGrayScale << endl;
     }
-
 }
