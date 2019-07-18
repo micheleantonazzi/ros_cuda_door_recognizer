@@ -42,6 +42,8 @@ int main(int argc, char **argv){
         double time_end_gray_scale = seconds();
         cout << " - convert to gray scale: " << time_end_gray_scale - time_start_gray_scale << "\n";
 
+        imwrite("ciao2.jpg", image->getOpenCVImage());
+
         delete image;
 
         //GPU
@@ -56,25 +58,11 @@ int main(int argc, char **argv){
 
         cout << " - convert to gray scale: " << Parameters::getInstance().getToGrayScaleNumBlock() <<
                 " blocks, " << Parameters::getInstance().getToGrayScaleNumThread() <<
-                " thread per block:\n";
+                " thread per block: ";
 
         int sizeImage = image->getHeight() * image->getWidth();
-        /*unsigned char *c = image->getOpenCVImage().data;
-        for (int i = 0; i < image->getHeight() * image->getWidth() * 3 ; ++i){
-            if(i% 3 == 0)
-                printf("| ");
-            printf("%i ", *(c++));
-        }
-         */
 
         Pixel *imageSource = CudaInterface::getPixelArray(image->getOpenCVImage().data, image->getWidth(), image->getHeight());
-
-        /*Pixel* temp = imageSource;
-        for (int j = 0; j < image->getWidth() * image->getHeight(); ++j) {
-            if (image->getWidth() * image->getHeight() - j < 10)
-            printf("%i ", (temp++)->value);
-        }
-         */
 
         Pixel *imageSourceGpu;
         cudaMalloc(&imageSourceGpu, sizeof(Pixel) * sizeImage);
@@ -99,10 +87,6 @@ int main(int argc, char **argv){
         cudaFreeHost(imageSource);
         cudaFree(imageSourceGpu);
         cudaFree(destinationGrayScaleGpu);
-
-        printf("\n");
-        //Pixel p(130, 11, 145);
-        //printf("%i, %i ,%i, %i\n",p.value, p.getR(), p.getG(), p.getB());
 
         cout << timeToGrayScale << endl;
     }
