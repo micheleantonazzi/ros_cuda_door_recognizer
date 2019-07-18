@@ -16,7 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(OpenCV REQUIRED)
 
 find_package(CUDA REQUIRED)
-CUDA_ADD_LIBRARY(gpu ${LIB_TYPE} src/cuda/cuda_interface.cu)
+CUDA_ADD_LIBRARY(gpu_lib ${LIB_TYPE} src/cuda/cuda_interface.cu)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -138,7 +138,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(door_recognizer_gpu src/door_recognizer_gpu.cpp)
+add_executable(door_recognizer_gpu src/door_recognizer_gpu.cpp src/utilities/parameters.h src/utilities/parameters.cpp)
 
 add_executable(door_recognizer src/door_recognizer.cpp src/utilities/parameters.h src/utilities/parameters.cpp
         src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp)
@@ -146,9 +146,9 @@ add_executable(door_recognizer src/door_recognizer.cpp src/utilities/parameters.
 add_executable(test_performance src/test_performance.cpp src/utilities/parameters.h src/utilities/parameters.cpp
         src/utilities/image.h src/utilities/image.cpp src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp src/utilities/pixel.h)
 
-add_dependencies(door_recognizer_gpu gpu)
+add_dependencies(door_recognizer_gpu gpu_lib)
 
-add_dependencies(test_performance gpu)
+add_dependencies(test_performance gpu_lib)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -163,7 +163,8 @@ add_dependencies(test_performance gpu)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(door_recognizer_gpu
         ${catkin_LIBRARIES}
-        gpu
+        ${OpenCV_LIBS}
+        gpu_lib
 )
 
 target_link_libraries(door_recognizer
@@ -174,7 +175,7 @@ target_link_libraries(door_recognizer
 target_link_libraries(test_performance
         ${catkin_LIBRARIES}
         ${OpenCV_LIBS}
-        gpu
+        gpu_lib
 )
 
 #############
