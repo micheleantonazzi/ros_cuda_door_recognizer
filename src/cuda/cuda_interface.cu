@@ -45,7 +45,7 @@ Pixel* CudaInterface::getPixelArray(const unsigned char *imageData, int width, i
 
 }
 
-void CudaInterface::pixelArrayToCharArray(const unsigned char *imageData, Pixel *source, int width, int height) {
+void CudaInterface::pixelArrayToCharArray(unsigned char *imageData, Pixel *source, int width, int height) {
     int imageSize = width * height;
 
     for (int i = 0; i < imageSize; ++i) {

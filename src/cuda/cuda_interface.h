@@ -17,7 +17,7 @@ public:
     // The array is allocated in PINNED MEMORY
     static Pixel* getPixelArray(const unsigned char *imageData, int width, int height);
 
-    static void pixelArrayToCharArray(const unsigned char *imageData, Pixel *source, int width, int height);
+    static void pixelArrayToCharArray(unsigned char *imageData, Pixel *source, int width, int height);
 
     // Convert an image in gray scale
     // Return the time to execute del kernel
