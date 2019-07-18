@@ -46,6 +46,16 @@ int main(int argc, char **argv){
 
         delete image;
 
+        // GPU info
+        cudaDeviceProp deviceProp;
+        cudaGetDeviceProperties(&deviceProp, 0);
+        cout << "GPU properties:\n"
+                " - Name: " << deviceProp.name << "\n"
+                " - Global memory size: " << deviceProp.totalGlobalMem / 1024 / 1024  << " MB\n"
+                " - Multiprocessors: " << deviceProp.multiProcessorCount << "\n"
+                " - Registers per multiprocessor: " << deviceProp.regsPerMultiprocessor << "\n"
+                " - Shared memory per multiprocessor: " << deviceProp.sharedMemPerMultiprocessor / 1024<< " KB\n";
+
         //GPU
 
         image = new Image();
