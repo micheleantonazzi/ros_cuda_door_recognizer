@@ -19,8 +19,57 @@ In order to detect a door, the program uses techniques of image processing. In t
 
 ## Performance evaluation and profiling
 
-An interesting aspect to consider is the analysis about the GPU algorithm, in order to evaluate the performance achieved by its execution and to collect some metrics to measure the correctness. This metrics are:
+In this section the algorithms implemented in CPU and GPU are compared in order to measure the speedup achieved by the parallel implementation executed in GPU. Another interesting aspect to consider is the profiling of kernels, in order to in order to collect some metrics and measure their correctness. This metrics are:
 
-* **branch efficiency:** measure the percentage of branches that follow the main execution path. If its value is 100% the max efficiency is achieved, that means all the branches follow the same execution path
+* **branch efficiency:** measures the percentage of branches that follow the main execution path. If its value is 100% the max efficiency is achieved, that means all the branches follow the same execution path
 * **achieved occupancy:** this metrics is about the number of active warp. Its range of values is between 0 and 1, where 1 represent the maximum and the high efficiency
-*   
+*   **global memory load efficiency:** measures the efficiency with which the kernel read data from global memory. In GPU with memory access it is possible to read 128 byte, in this way if all 32 threads in a warp require a float (4 byte), the data will be given to all threads with a single transaction. But there is some conditions for having this property: the 128 bytes must be consecutive and aligned, so the first address of the transaction must be a multiple of 128. If the threads request for data in arbitrary positions, many transaction are made (each one read 128 byte) but many read values are discarded because they are not requested by the threads. This metric is the percentage of the byte read from the memory and the byte used by the threads, so if the value is 100% the maximum efficiency is achieved
+*   **global memory load efficiency:** the principle with which data is store in global memory is the same as written above. So if the value is 100% the pattern is respected and the efficiency is maximum
+
+All the test are executed in a laptop with:
+
+* CPU: Intel Core i5-8250U, 1.60 Ghz, 4 core, 8 thread
+* GPU: Nvidia MX 150, 4 GB of GDDR5 memory
+
+### Gray scale
+
+![Convert to gray scale](images/md/gray_scale.png)
+
+#### Image 390 x 520 pixel
+
+Grid dimension: 500 x 1 x 1
+
+Block dimension: 256 x 1 x 1
+
+Performance:
+
+* **CPU**: 0.001107 second
+* **GPU**: 0.00006508 second (17 times faster)
+
+Metrics:
+
+* **branch efficiency:** 100%
+* **achieved occupancy:** 0.907
+* **global memory load efficiency:** 100%
+* **global memory store efficiency:** 100%
+
+#### Image 3456 x 4608
+
+Grid dimension: 1024 x 1 x 1
+
+Block dimension: 1024 x 1 x 1
+
+Performance:
+
+* **CPU:** 0.1159 second
+* **GPU:** 0.003149 second (37 time faster)
+
+Metrics:
+
+- **branch efficiency:** 100%
+- **achieved occupancy:** 0.924
+- **global memory load efficiency:** 100%
+- **global memory store efficiency:** 100%
+
+
+
