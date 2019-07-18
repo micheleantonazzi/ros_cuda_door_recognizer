@@ -16,7 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(OpenCV REQUIRED)
 
 find_package(CUDA REQUIRED)
-CUDA_ADD_LIBRARY(gpu_lib ${LIB_TYPE} src/cuda/cuda_interface.cu)
+CUDA_ADD_LIBRARY(gpu_lib ${LIB_TYPE} src/cuda/cuda_interface.cu src/utilities/utilities.h src/utilities/utilities.cpp)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -144,7 +144,8 @@ add_executable(door_recognizer src/door_recognizer.cpp src/utilities/parameters.
         src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp)
 
 add_executable(test_performance src/test_performance.cpp src/utilities/parameters.h src/utilities/parameters.cpp
-        src/utilities/image.h src/utilities/image.cpp src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp src/utilities/pixel.h)
+        src/utilities/image.h src/utilities/image.cpp src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp src/utilities/pixel.h
+        src/utilities/utilities.h src/utilities/utilities.cpp)
 
 add_dependencies(door_recognizer_gpu gpu_lib)
 

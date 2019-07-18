@@ -9,7 +9,7 @@
 #include "utilities/parameters.h"
 #include "utilities/image.h"
 #include "cpu/cpu_algorithms.h"
-#include "utilities/time_utilities.h"
+#include "utilities/utilities.h"
 #include "cuda/cuda_interface.h"
 
 using namespace ros;
@@ -37,9 +37,9 @@ int main(int argc, char **argv){
                 " - height: " << image->getHeight() << "\n" <<
                 "Operations in CPU:\n";
 
-        double time_start_gray_scale = seconds();
+        double time_start_gray_scale = Utilities::seconds();
         CpuAlgorithms::getInstance().toGrayScale(image->getOpenCVImage().data, image->getWidth(), image->getHeight());
-        double time_end_gray_scale = seconds();
+        double time_end_gray_scale = Utilities::seconds();
         cout << " - convert to gray scale: " << time_end_gray_scale - time_start_gray_scale << "\n";
 
         imwrite("ciao2.jpg", image->getOpenCVImage());

@@ -4,7 +4,7 @@
 #include <device_launch_parameters.h>
 #include "cuda_interface.h"
 #include "utilities/gpu_utilities.h"
-#include "../utilities/time_utilities.h"
+#include "../utilities/utilities.h"
 
 __global__ void test_kernel(int num){
     for (int i = 0; i < 100; ++i) {
@@ -85,13 +85,13 @@ __global__ void to_gray_scale(unsigned char *destination, unsigned char *source,
 
 double CudaInterface::toGrayScale(unsigned char *destination, unsigned char *source, int width, int height, int numBlocks, int numThread) {
 
-    double time = seconds();
+    double time = Utilities::seconds();
 
     to_gray_scale<<<numBlocks, numThread>>>(destination, source, width, height);
 
     cudaDeviceSynchronize();
 
-    time = seconds() - time;
+    time = Utilities::seconds() - time;
 
     return time;
 }
@@ -143,13 +143,13 @@ __global__ void to_gray_scale(Pixel *destination, Pixel *source, int width, int 
 }
 
 double CudaInterface::toGrayScale(Pixel *destination, Pixel *source, int width, int height, int numBlocks, int numThread, const cudaStream_t &stream) {
-    double time = seconds();
+    double time = Utilities::seconds();
 
     to_gray_scale<<<numBlocks, numThread, 0, stream>>>(destination, source, width, height);
 
     cudaDeviceSynchronize();
 
-    time = seconds() - time;
+    time = Utilities::seconds() - time;
 
     return time;
 }
