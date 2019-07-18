@@ -166,12 +166,11 @@ add_dependencies(test_performance cuda_interface)
 target_link_libraries(door_recognizer_gpu
         ${catkin_LIBRARIES}
         ${OpenCV_LIBS}
-        gpu_lib
+        cuda_interface
 )
 
 target_link_libraries(door_recognizer
-   ${catkin_LIBRARIES}
-        cuda_interface
+        ${catkin_LIBRARIES}
         ${catkin_LIBRARIES}
         ${OpenCV_LIBS}
 )
