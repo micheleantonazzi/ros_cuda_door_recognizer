@@ -26,6 +26,8 @@ void Parameters::getValues() {
     nodeHandle.param<string>("topic", this->topic, CAMERA_TOPIC);
     nodeHandle.param<int>("to_gray_scale_num_block", this->to_gray_scale_num_block, 128);
     nodeHandle.param<int>("to_gray_scale_num_thread", this->to_gray_scale_num_thread, 512);
+    nodeHandle.param<int>("gaussian_filter_num_block", this->gaussian_filter_num_block, 128);
+    nodeHandle.param<int>("gaussian_filter_num_thread", this->gaussian_filter_num_thread, 512);
 
 }
 
@@ -47,4 +49,12 @@ int Parameters::getToGrayScaleNumBlock() {
 
 int Parameters::getToGrayScaleNumThread() {
     return this->to_gray_scale_num_thread;
+}
+
+int Parameters::getGaussianFilterNumBlock() {
+    return this->gaussian_filter_num_block;
+}
+
+int Parameters::getGaussianFilterNumThread() {
+    return this->gaussian_filter_num_thread;
 }
