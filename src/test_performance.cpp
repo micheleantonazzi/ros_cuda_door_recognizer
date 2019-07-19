@@ -46,7 +46,7 @@ int main(int argc, char **argv){
 
         Mat imageGaussian(image->getOpenCVImage());
 
-        float **gaussianFilter = Utilities::getGaussianMatrix(5, 0.84);
+        float *gaussianFilter = Utilities::getGaussianMatrix(5, 0.84);
 
         time = Utilities::seconds();
         CpuAlgorithms::getInstance().gaussianFilter(imageGaussian.data, image->getOpenCVImage().data, gaussianFilter, image->getWidth(),
