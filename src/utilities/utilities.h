@@ -11,6 +11,8 @@ public:
     static double seconds();
 
     static float* getGaussianMatrix(int size, float alpha);
+
+    static float* getGaussianMatrixPinned(int size, float alpha);
 };
 
 
