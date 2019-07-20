@@ -1,4 +1,9 @@
+
+
+
+
 # ROS CUDA door recognizer
+
 This is a ROS package that's able to recognize doors using image processing methods. It's goal is to analyze in real time the frame captured by a camera connected to the robot in order to find a door. The algorithms are implemented to run in CPU and also in GPU, to improve the performance.
 
 **NB:** the code is written in CUDA C, so is necessary a NVIDIA GPU
@@ -17,7 +22,9 @@ In order to detect a door, the program uses techniques of image processing. In t
 
 * **gray scale:** first of all the image is converted in gray scale. The procedure is very simple: the values of every pixel are changed with an average obtained by the old values RGB
 
-* **Gaussian filter:** this filter is important because it prepares the image to the future manipulations. In particular this is a low-pass filter so removes high-frequency components from the image, in order to reduce the image noise. To smooth the image the Gaussian filter is applied by convolution to the image. The kernel (also called mask) of the Gaussian filter is a matrix. Its equation is:![Gaussian kernel 2D](images/md/gaussian_matrix.png)  where *x*, *y* are the distance to origin.
+* **Gaussian filter:** this filter is important because it prepares the image to the future manipulations. In particular this is a low-pass filter so removes high-frequency components from the image, in order to reduce the image noise. To smooth the image the Gaussian filter is applied by convolution to the image. The kernel (also called mask) of the Gaussian filter is a matrix. Its equation is:
+
+  ![Gaussian kernel 2D](images/md/gaussian_matrix.png)  where *x*, *y* are the distance to origin.
 
   The problem with a 2D kernel is the high complexity, equal to O(m1 * m2 * n * n), where *m1* is the image width, *m2* is the image height and *n* is the kernel dimension. In order to reduce the complexity, a two-dimensional Gaussian filter can be applied with two single-dimensional filter, using a 1D kernel. This kernel must be applied in horizontal and vertical direction and the effects are the same as those obtained with 2D kernel. Its equation is 
 
