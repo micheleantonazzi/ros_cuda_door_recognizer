@@ -1,4 +1,7 @@
+
+
 # ROS CUDA door recognizer
+
 This is a ROS package that's able to recognize doors using image processing methods. It's goal is to analyze in real time the frame captured by a camera connected to the robot in order to find a door. The algorithms are implemented to run in CPU and also in GPU, to improve the performance.
 
 **NB:** the code is written in CUDA C, so is necessary a NVIDIA GPU
