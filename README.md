@@ -17,6 +17,14 @@ In order to detect a door, the program uses techniques of image processing. In t
 
 * **gray scale:** first of all the image is converted in gray scale. The procedure is very simple: the values of every pixel are changed with an average obtained by the old values RGB
 
+* **Gaussian filter:** this filter is important because it prepares the image to the future manipulations. In particular this is a low-pass filter so removes high-frequency components from the image, in order to reduce the image noise. To smooth the image the Gaussian filter is applied by convolution to the image. The kernel (also called mask) of the Gaussian filter is a matrix. Its equation is:![Gaussian kernel 2D](images/md/gaussian_matrix.png)  where *x*, *y* are the distance to origin.
+
+  The problem with a 2D kernel is the high complexity, equal to O(m1 * m2 * n * n), where *m1* is the image width, *m2* is the image height and *n* is the kernel dimension. In order to reduce the complexity, a two-dimensional Gaussian filter can be applied with two single-dimensional filter, using a 1D kernel. This kernel must be applied in horizontal and vertical direction and the effects are the same as those obtained with 2D kernel. Its equation is 
+
+  ![Gaussian kernel 2D](images/md/gaussian_array.png) 
+
+  Now the complexity is O(m1 * m2 * n)
+
 ## Performance evaluation and profiling
 
 In this section the algorithms implemented in CPU and GPU are compared in order to measure the speedup achieved by the parallel implementation executed in GPU. Another interesting aspect to consider is the profiling of kernels, in order to in order to collect some metrics and measure their correctness. This metrics are:
