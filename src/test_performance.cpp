@@ -101,29 +101,35 @@ int main(int argc, char **argv){
 
         cudaMemcpy(imageSourceGpu, imageSource, sizeImage * sizeof(Pixel), cudaMemcpyHostToDevice);
 
-        double timeToGrayScale = CudaInterface::toGrayScale(destinationGrayScaleGpu, imageSourceGpu, image->getWidth(),
+        time = CudaInterface::toGrayScale(destinationGrayScaleGpu, imageSourceGpu, image->getWidth(),
                 image->getHeight(), Parameters::getInstance().getToGrayScaleNumBlock(), Parameters::getInstance().getToGrayScaleNumThread());
 
         cudaMemcpy(imageSource, destinationGrayScaleGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
 
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
 
+        cout << time << endl;
+
         imwrite("gpu-grayscale.jpg", image->getOpenCVImage());
 
-        cout << timeToGrayScale << endl;
-
         // ----------------- Apply Gaussian filter --------------- //
+
+        cout << " - apply gaussian filter: " << Parameters::getInstance().getGaussianFilterNumBlock() <<
+             " blocks, " << Parameters::getInstance().getGaussianFilterNumThread() <<
+             " thread per block: ";
 
         Pixel *destinationGaussianFilterGpu;
         cudaMalloc(&destinationGaussianFilterGpu, sizeof(Pixel) * sizeImage);
 
-        float *gaussianArray = Utilities::getGaussianArrayPinned(5, 1.3);
+        float *gaussianArray = Utilities::getGaussianArrayPinned(5, 0.84);
 
-        CudaInterface::gaussianFilter(destinationGaussianFilterGpu, destinationGrayScaleGpu, image->getWidth(), image->getHeight(),
+        time = CudaInterface::gaussianFilter(destinationGaussianFilterGpu, destinationGrayScaleGpu, image->getWidth(), image->getHeight(),
                                       gaussianArray, 5, Parameters::getInstance().getGaussianFilterNumBlock(),
                                       Parameters::getInstance().getGaussianFilterNumThread());
 
         cudaMemcpy(imageSource, destinationGaussianFilterGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
+
+        cout << time << endl;
 
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
 
