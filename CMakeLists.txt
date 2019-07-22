@@ -138,16 +138,19 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(door_recognizer_gpu src/door_recognizer_gpu.cpp src/utilities/parameters.h src/utilities/parameters.cpp)
+add_executable(door_recognizer_gpu src/door_recognizer_gpu.cpp src/utilities/parameters.h src/utilities/parameters.cpp
+        src/utilities/utilities.h src/utilities/utilities.cpp)
 
 add_executable(door_recognizer src/door_recognizer.cpp src/utilities/parameters.h src/utilities/parameters.cpp
-        src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp)
+        src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp src/utilities/utilities.h src/utilities/utilities.cpp)
 
 add_executable(test_performance src/test_performance.cpp src/utilities/parameters.h src/utilities/parameters.cpp
         src/utilities/image.h src/utilities/image.cpp src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp src/utilities/pixel.h
         src/utilities/utilities.h src/utilities/utilities.cpp)
 
 add_dependencies(door_recognizer_gpu gpu_interface)
+
+add_dependencies(door_recognizer gpu_interface)
 
 add_dependencies(test_performance gpu_interface)
 
@@ -171,6 +174,7 @@ target_link_libraries(door_recognizer_gpu
 target_link_libraries(door_recognizer
         ${catkin_LIBRARIES}
         ${OpenCV_LIBS}
+        gpu_interface
 )
 
 target_link_libraries(test_performance
