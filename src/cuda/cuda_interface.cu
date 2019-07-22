@@ -234,9 +234,9 @@ double CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int widt
     double time = Utilities::seconds();
 
     // Applying the first horizontal gaussian filter
-    gaussian_filter_horizontal<<<numBlocks, numThread, sharedMemory * 4>>>(transposeImage, source, width, height, maskDim);
+    gaussian_filter_horizontal<<<numBlocks, numThread, sharedMemory * sizeof(Pixel)>>>(transposeImage, source, width, height, maskDim);
     // Applying the second horizontal gaussian filter
-    gaussian_filter_horizontal<<<numBlocks, numThread, sharedMemory * 4>>>(destination, transposeImage, height, width, maskDim);
+    gaussian_filter_horizontal<<<numBlocks, numThread, sharedMemory * sizeof(Pixel)>>>(destination, transposeImage, height, width, maskDim);
     cudaDeviceSynchronize();
     time = Utilities::seconds() - time;
     cudaFree(maskGpu);

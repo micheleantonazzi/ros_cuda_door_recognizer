@@ -43,6 +43,10 @@ private:
     // The path where to put the processed images
     string processed_images_path;
 
+    int gaussian_mask_size;
+
+    float gaussian_alpha;
+
     Parameters();
 
 public:
@@ -67,6 +71,10 @@ public:
     int getGaussianFilterNumThread();
 
     string getProcessedImagesPath();
+
+    int getGaussianMaskSize();
+
+    float getGaussianAlpha();
 };
 
 

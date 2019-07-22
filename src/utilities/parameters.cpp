@@ -24,11 +24,13 @@ void Parameters::getValues() {
     nodeHandle.param<bool>("camera", this->camera, false);
     nodeHandle.param<string>("image_path", this->image_path, DOOR_MED_RES);
     nodeHandle.param<string>("topic", this->topic, CAMERA_TOPIC);
-    nodeHandle.param<int>("to_gray_scale_num_block", this->to_gray_scale_num_block, 128);
-    nodeHandle.param<int>("to_gray_scale_num_thread", this->to_gray_scale_num_thread, 512);
-    nodeHandle.param<int>("gaussian_filter_num_block", this->gaussian_filter_num_block, 300);
-    nodeHandle.param<int>("gaussian_filter_num_thread", this->gaussian_filter_num_thread, 128);
+    nodeHandle.param<int>("to_gray_scale_num_block", this->to_gray_scale_num_block, 500);
+    nodeHandle.param<int>("to_gray_scale_num_thread", this->to_gray_scale_num_thread, 256);
+    nodeHandle.param<int>("gaussian_filter_num_block", this->gaussian_filter_num_block, 500);
+    nodeHandle.param<int>("gaussian_filter_num_thread", this->gaussian_filter_num_thread, 256);
     nodeHandle.param<string>("processed_images_path", this->processed_images_path, "/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/processed_images/");
+    nodeHandle.param<int>("gaussian_mask_size", this->gaussian_mask_size, 5);
+    nodeHandle.param<float>("gaussian_alpha", this->gaussian_alpha, 0.84);
 }
 
 bool Parameters::usingCamera() {
@@ -61,4 +63,12 @@ int Parameters::getGaussianFilterNumThread() {
 
 string Parameters::getProcessedImagesPath() {
     return this->processed_images_path;
+}
+
+int Parameters::getGaussianMaskSize() {
+    return this->gaussian_mask_size;
+}
+
+float Parameters::getGaussianAlpha() {
+    return this->gaussian_alpha;
 }

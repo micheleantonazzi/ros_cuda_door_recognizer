@@ -48,11 +48,12 @@ int main(int argc, char **argv){
 
         Mat imageGaussian(image->getOpenCVImage());
 
-        float *gaussianFilter = Utilities::getGaussianMatrix(5, 0.84);
+        float *gaussianFilter = Utilities::getGaussianMatrix(Parameters::getInstance().getGaussianMaskSize(),
+                                                             Parameters::getInstance().getGaussianAlpha());
 
         time = Utilities::seconds();
         CpuAlgorithms::getInstance().gaussianFilter(imageGaussian.data, image->getOpenCVImage().data, gaussianFilter, image->getWidth(),
-                image->getHeight(), 5);
+                image->getHeight(), Parameters::getInstance().getGaussianMaskSize());
         time = Utilities::seconds() - time;
 
         cout << " - apply gaussian filter: " << time << "\n";
@@ -121,10 +122,11 @@ int main(int argc, char **argv){
         Pixel *destinationGaussianFilterGpu;
         cudaMalloc(&destinationGaussianFilterGpu, sizeof(Pixel) * sizeImage);
 
-        float *gaussianArray = Utilities::getGaussianArrayPinned(5, 0.84);
+        float *gaussianArray = Utilities::getGaussianArrayPinned(Parameters::getInstance().getGaussianMaskSize(),
+                                                                 Parameters::getInstance().getGaussianAlpha());
 
         time = CudaInterface::gaussianFilter(destinationGaussianFilterGpu, destinationGrayScaleGpu, image->getWidth(), image->getHeight(),
-                                      gaussianArray, 5, Parameters::getInstance().getGaussianFilterNumBlock(),
+                                      gaussianArray, Parameters::getInstance().getGaussianMaskSize(), Parameters::getInstance().getGaussianFilterNumBlock(),
                                       Parameters::getInstance().getGaussianFilterNumThread());
 
         cudaMemcpy(imageSource, destinationGaussianFilterGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
