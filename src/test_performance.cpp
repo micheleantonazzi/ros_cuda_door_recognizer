@@ -42,7 +42,7 @@ int main(int argc, char **argv){
         time = Utilities::seconds() - time;
         cout << " - convert to gray scale: " << time << "\n";
 
-        imwrite("cpu-grayscale.jpg", image->getOpenCVImage());
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-grayscale.jpg", image->getOpenCVImage());
 
         // ------------ Apply gaussian filter --------------- //
 
@@ -57,7 +57,7 @@ int main(int argc, char **argv){
 
         cout << " - apply gaussian filter: " << time << "\n";
 
-        imwrite("cpu-gaussian.jpg", imageGaussian);
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-gaussian.jpg", imageGaussian);
 
         delete image;
         delete gaussianFilter;
@@ -110,7 +110,7 @@ int main(int argc, char **argv){
 
         cout << time << endl;
 
-        imwrite("gpu-grayscale.jpg", image->getOpenCVImage());
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-grayscale.jpg", image->getOpenCVImage());
 
         // ----------------- Apply Gaussian filter --------------- //
 
@@ -133,7 +133,7 @@ int main(int argc, char **argv){
 
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
 
-        imwrite("gpu-gaussian-filter.jpg", image->getOpenCVImage());
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-gaussian-filter.jpg", image->getOpenCVImage());
 
         cudaFreeHost(imageSource);
         cudaFree(imageSourceGpu);
