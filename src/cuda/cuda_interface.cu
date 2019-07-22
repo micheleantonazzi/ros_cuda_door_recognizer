@@ -166,8 +166,6 @@ __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, in
                                 int maskDim){
     extern __shared__ Pixel smem[];
 
-    int threadId = blockDim.x * blockIdx.x + threadIdx.x;
-
     int pixelPerThread = (width * height) / (gridDim.x * blockDim.x) + 1;
 
     // First pixel of a block
@@ -176,10 +174,10 @@ __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, in
     // Load first values
     if (threadIdx.x < maskDim / 2 && blockStart + threadIdx.x < width * height){
         smem[threadIdx.x] = 0;
-        if(((blockStart + threadIdx.x) % width) - maskDim / 2 >= 0)
+        int start = (blockStart + threadIdx.x) % width;
+        if(start - maskDim / 2 >= 0)
             smem[threadIdx.x] = *(source + blockStart + threadIdx.x - maskDim / 2);
     }
-
 
     if(blockStart + threadIdx.x < width * height){
         for (int i = 0; i < pixelPerThread; ++i) {
@@ -189,15 +187,12 @@ __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, in
         }
     }
 
-
     // Load final part
     if(threadIdx.x >= blockDim.x - maskDim / 2 && blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x < width * height){
-        //printf("%i\n",maskDim / 2 + blockDim.x * (pixelPerThread - 1) + threadIdx.x);
-        //smem[maskDim - 1 + blockDim.x * (pixelPerThread - 1) + threadIdx.x] = 0;
-
-        if(blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x % width < width - maskDim / 2)
+        smem[maskDim - 1 + blockDim.x * (pixelPerThread - 1) + threadIdx.x] = 0;
+        if(blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x < width * height - maskDim / 2){
             smem[maskDim - 1 + blockDim.x * (pixelPerThread - 1) + threadIdx.x] = *(source + blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x + maskDim / 2);
-        printf("carico fine");
+        }
     }
 
     __syncthreads();
@@ -205,22 +200,21 @@ __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, in
     for (int i = 0; i < pixelPerThread; ++i) {
 
         if(blockStart + (blockDim.x * i) + threadIdx.x < width * height){
-            double value = 0;
+            float value = 0;
             for (int j = 0; j < maskDim; ++j) {
-                unsigned char x = smem[j + (blockDim.x * i) + threadIdx.x];
-                value += x * maskConstant[j];
+                int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
+                if(column + j - maskDim / 2 >= 0 && column + j - maskDim / 2 < width){
+                    unsigned char x = smem[j + (blockDim.x * i) + threadIdx.x];
+                    value += x * maskConstant[j];
+                }
             }
             int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
             int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
-            //*(destination + column * height + row) = smem[maskDim / 2 + (blockDim.x * i) + threadIdx.x];
             unsigned char finalChar = value;
             float final = (finalChar << 16) + (finalChar << 8) + finalChar;
             *(destination + column * height + row) = final;
         }
     }
-
-    //printf("finito000\n");
-
 }
 
 
@@ -237,12 +231,15 @@ double CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int widt
     cudaMalloc(&transposeImage, width * height * sizeof(Pixel));
 
     int sharedMemory = ((width * height) / (numBlocks * numThread) + 1) * numThread + maskDim - 1;
-    printf("Shared %i\n", sharedMemory);
+    double time = Utilities::seconds();
+
+    // Applying the first horizontal gaussian filter
     gaussian_filter_horizontal<<<numBlocks, numThread, sharedMemory * 4>>>(transposeImage, source, width, height, maskDim);
-    cudaDeviceSynchronize();
+    // Applying the second horizontal gaussian filter
     gaussian_filter_horizontal<<<numBlocks, numThread, sharedMemory * 4>>>(destination, transposeImage, height, width, maskDim);
     cudaDeviceSynchronize();
+    time = Utilities::seconds() - time;
     cudaFree(maskGpu);
     cudaFree(transposeImage);
-    return 0;
+    return time;
 }
