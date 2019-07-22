@@ -44,6 +44,8 @@ int main(int argc, char **argv){
 
         imwrite("cpu-grayscale.jpg", image->getOpenCVImage());
 
+        // ------------ Apply gaussian filter --------------- //
+
         Mat imageGaussian(image->getOpenCVImage());
 
         float *gaussianFilter = Utilities::getGaussianMatrix(5, 0.84);
@@ -58,6 +60,7 @@ int main(int argc, char **argv){
         imwrite("cpu-gaussian.jpg", imageGaussian);
 
         delete image;
+        delete gaussianFilter;
 
         // GPU info
         cudaDeviceProp deviceProp;
@@ -107,10 +110,44 @@ int main(int argc, char **argv){
 
         imwrite("gpu-grayscale.jpg", image->getOpenCVImage());
 
+        cout << timeToGrayScale << endl;
+
+        // ----------------- Apply Gaussian filter --------------- //
+
+        Pixel *destinationGaussianFilterGpu;
+        cudaMalloc(&destinationGaussianFilterGpu, sizeof(Pixel) * sizeImage);
+
+        float *gaussianArray = Utilities::getGaussianArrayPinned(5, 1.3);
+
+        CudaInterface::gaussianFilter(destinationGaussianFilterGpu, destinationGrayScaleGpu, image->getWidth(), image->getHeight(),
+                                      gaussianArray, 5, Parameters::getInstance().getGaussianFilterNumBlock(),
+                                      Parameters::getInstance().getGaussianFilterNumThread());
+
+        cudaMemcpy(imageSource, destinationGaussianFilterGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
+
+        CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
+
+        imwrite("gpu-gaussian-filter.jpg", image->getOpenCVImage());
+
         cudaFreeHost(imageSource);
         cudaFree(imageSourceGpu);
         cudaFree(destinationGrayScaleGpu);
+        cudaFree(destinationGaussianFilterGpu);
+        cudaFreeHost(gaussianArray);
 
-        cout << timeToGrayScale << endl;
+        /*float *m = Utilities::getGaussianMatrix(5, 0.8);
+        for (int i = 0; i < 5; ++i) {
+            for (int j = 0; j < 5; ++j) {
+                printf("%.20f ", m[i * 5 + j]);
+            }
+            printf("\n");
+        }
+
+        m = Utilities::getGaussianArray(5, 0.8);
+        for (int i = 0; i < 5; ++i) {
+            printf("%.20f ", m[i]);
+        }
+        printf("\n");
+         */
     }
 }

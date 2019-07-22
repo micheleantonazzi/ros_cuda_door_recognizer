@@ -24,7 +24,19 @@ public:
     static double toGrayScale(unsigned char *destination, unsigned char *source, int width, int height, int numBlocks, int numThread);
 
     // Convert an image in gray scale using type Pixel32 to improve the access memory performance
-    static double toGrayScale(Pixel *destination, Pixel *source, int width, int height, int numBlocks, int numThread, const cudaStream_t &stream = 0);
+    // This kernel is in a stream non NULL
+    static void toGrayScale(Pixel *destination, Pixel *source, int width, int height, int numBlocks, int numThread, const cudaStream_t &stream);
+
+    // Convert an image in gray scale using type Pixel32 to improve the access memory performance
+    // The kernel is in the default stream
+    // This function returns the kernel execution time
+    static double toGrayScale(Pixel *destination, Pixel *source, int width, int height, int numBlocks, int numThread);
+
+    // Apply a Gaussian filter to image
+    // To improve the performance are applied to the image two one-dimensional convolution,
+    // one horizontally and one vertically using the same kernel
+    static double gaussianFilter(Pixel *destination, Pixel *source, int width, int height,
+            float *gaussianMask, int maskDim, int NumBlocks, int numThread);
 };
 
 
