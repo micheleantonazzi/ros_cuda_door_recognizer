@@ -40,6 +40,9 @@ private:
     // Number of thread per block used to run the kernel that applies the gaussian filter
     int gaussian_filter_num_thread;
 
+    // The path where to put the processed images
+    string processed_images_path;
+
     Parameters();
 
 public:
@@ -62,6 +65,8 @@ public:
     int getGaussianFilterNumBlock();
 
     int getGaussianFilterNumThread();
+
+    string getProcessedImagesPath();
 };
 
 
