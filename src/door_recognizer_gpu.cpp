@@ -6,6 +6,7 @@
 #include <sensor_msgs/Image.h>
 #include "cuda/cuda_interface.h"
 #include "utilities/parameters.h"
+#include "utilities/utilities.h"
 
 using namespace ros;
 
@@ -20,7 +21,7 @@ int main(int argc, char **argv){
 
     NodeHandle node;
 
-    Publisher publisherGrayScale = node.advertise<sensor_msgs::Image>("door_recognizer/gray_scale", 10);
+    Publisher publisherGrayScale = node.advertise<sensor_msgs::Image>("door_recognizer/image_processed", 10);
 
     Subscriber subscriber = node.subscribe<sensor_msgs::Image>(Parameters::getInstance().getTopic(), 10,
                                                                boost::bind(readFrame, _1, publisherGrayScale));
@@ -36,18 +37,31 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGr
     cudaStream_t stream;
     cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
 
-    Pixel *imageSourceGpu, *grayScaleGpu;
+    Pixel *imageSourceGpu, *grayScaleGpu, *gaussianImageGpu;
 
     cudaMalloc(&imageSourceGpu, imageSize * sizeof(Pixel));
     cudaMalloc(&grayScaleGpu, imageSize * sizeof(Pixel));
+    cudaMalloc(&gaussianImageGpu, imageSize * sizeof(Pixel));
 
     Pixel *imageSource = CudaInterface::getPixelArray(image->data.data(), image->width, image->height);
+
+    // Gray scale
+
     cudaMemcpyAsync(imageSourceGpu, imageSource, imageSize * sizeof(Pixel), cudaMemcpyHostToDevice, stream);
 
     CudaInterface::toGrayScale(grayScaleGpu, imageSourceGpu, image->width, image->height,
             Parameters::getInstance().getToGrayScaleNumBlock(), Parameters::getInstance().getToGrayScaleNumThread(), stream);
 
-    cudaMemcpyAsync(imageSource, grayScaleGpu, imageSize * sizeof(Pixel), cudaMemcpyDeviceToHost, stream);
+    // Gaussian filter
+    float *mask = Utilities::getGaussianArrayPinned(Parameters::getInstance().getGaussianMaskSize(),
+            Parameters::getInstance().getGaussianAlpha());
+
+    CudaInterface::gaussianFilter(gaussianImageGpu, grayScaleGpu, image->width, image->height,
+                                  mask, Parameters::getInstance().getGaussianMaskSize(), Parameters::getInstance().getGaussianFilterNumBlock(),
+                                  Parameters::getInstance().getGaussianFilterNumThread(), stream);
+
+
+    cudaMemcpyAsync(imageSource, gaussianImageGpu, imageSize * sizeof(Pixel), cudaMemcpyDeviceToHost, stream);
 
     cudaStreamSynchronize(stream);
 
@@ -57,4 +71,7 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGr
     cudaFreeHost(imageSource);
     cudaFree(imageSourceGpu);
     cudaFree(grayScaleGpu);
+    cudaFree(gaussianImageGpu);
+    cudaFreeHost(mask);
+    cudaStreamDestroy(stream);
 }

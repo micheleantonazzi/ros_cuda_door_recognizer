@@ -243,3 +243,27 @@ double CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int widt
     cudaFree(transposeImage);
     return time;
 }
+
+void CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int width, int height, float *gaussianMask,
+                                     int maskDim, int numBlocks, int numThread, cudaStream_t &stream) {
+    // Alloc the constant memory
+    float *maskGpu;
+    cudaMalloc(&maskGpu, maskDim * sizeof(float));
+    cudaMemcpyAsync(maskGpu, gaussianMask, maskDim * sizeof(float), cudaMemcpyHostToDevice, stream);
+    cudaMemcpyToSymbolAsync(maskConstant, &maskGpu, sizeof(float*), 0, cudaMemcpyHostToDevice, stream);
+
+    // Alloc device memory to put the transpose image
+    Pixel *transposeImage;
+    cudaMalloc(&transposeImage, width * height * sizeof(Pixel));
+
+    int sharedMemory = ((width * height) / (numBlocks * numThread) + 1) * numThread + maskDim - 1;
+
+    // Applying the first horizontal gaussian filter
+    gaussian_filter_horizontal<<<numBlocks, numThread, sharedMemory * sizeof(Pixel), stream>>>(transposeImage, source, width, height, maskDim);
+    // Applying the second horizontal gaussian filter
+    gaussian_filter_horizontal<<<numBlocks, numThread, sharedMemory * sizeof(Pixel), stream>>>(destination, transposeImage, height, width, maskDim);
+
+    cudaStreamSynchronize(stream);
+    cudaFree(maskGpu);
+    cudaFree(transposeImage);
+}

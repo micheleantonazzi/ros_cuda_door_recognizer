@@ -37,6 +37,9 @@ public:
     // one horizontally and one vertically using the same kernel
     static double gaussianFilter(Pixel *destination, Pixel *source, int width, int height,
             float *gaussianMask, int maskDim, int NumBlocks, int numThread);
+
+    static void gaussianFilter(Pixel *destination, Pixel *source, int width, int height,
+                                 float *gaussianMask, int maskDim, int NumBlocks, int numThread, cudaStream_t &stream);
 };
 
 
