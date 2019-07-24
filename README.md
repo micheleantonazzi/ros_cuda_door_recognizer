@@ -81,5 +81,45 @@ Metrics:
 - **global memory load efficiency:** 100%
 - **global memory store efficiency:** 100%
 
+### Gaussian Filter
+
+![Gaussian filter](images/md/gaussian_filter.png)
+
+#### Image 390 x 520 pixel
+
+Grid dimension: 300 x 1 x 1
+
+Block dimension: 256 x 1 x 1
+
+Performance:
+
+- **CPU**: 0.02162 second
+- **GPU**: 0.0002429 second (89 times faster)
+
+Metrics:
+
+- **branch efficiency:** 100%
+- **achieved occupancy:** 0.931
+- **global memory load efficiency:** 51.1%
+- **global memory store efficiency:** 12.5%
+
+#### Image 3456 x 4608
+
+Grid dimension: 1024 x 1 x 1
+
+Block dimension: 1024 x 1 x 1
+
+Performance:
+
+- **CPU:** 1.1436 second
+- **GPU:** 0.05876 second (19 time faster)
+
+Metrics:
+
+- **branch efficiency:** 100%
+- **achieved occupancy:** 0.915
+- **global memory load efficiency:** 51.4%
+- **global memory store efficiency:** 12.5%
+
 
 
