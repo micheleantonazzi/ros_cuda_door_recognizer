@@ -34,6 +34,19 @@ private:
     // Number of thread per block used to run the kernel that convert an image to gray scale
     int to_gray_scale_num_thread;
 
+    // Number of blocks used to run the kernel that applies the gaussian filter
+    int gaussian_filter_num_block;
+
+    // Number of thread per block used to run the kernel that applies the gaussian filter
+    int gaussian_filter_num_thread;
+
+    // The path where to put the processed images
+    string processed_images_path;
+
+    int gaussian_mask_size;
+
+    float gaussian_alpha;
+
     Parameters();
 
 public:
@@ -52,6 +65,16 @@ public:
     int getToGrayScaleNumBlock();
 
     int getToGrayScaleNumThread();
+
+    int getGaussianFilterNumBlock();
+
+    int getGaussianFilterNumThread();
+
+    string getProcessedImagesPath();
+
+    int getGaussianMaskSize();
+
+    float getGaussianAlpha();
 };
 
 

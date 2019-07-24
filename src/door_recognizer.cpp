@@ -8,7 +8,7 @@
 
 #include "utilities/parameters.h"
 #include "cpu/cpu_algorithms.h"
-#include "utilities/time_utilities.h"
+#include "utilities/utilities.h"
 
 using namespace ros;
 using namespace std;
@@ -24,7 +24,7 @@ int main(int argc, char **argv){
 
     NodeHandle node;
 
-    Publisher publisherGrayScale = node.advertise<sensor_msgs::Image>("door_recognizer/gray_scale", 10);
+    Publisher publisherGrayScale = node.advertise<sensor_msgs::Image>("door_recognizer/image_processed", 10);
 
     Subscriber subscriber = node.subscribe<sensor_msgs::Image>(Parameters::getInstance().getTopic(), 10,
             boost::bind(readFrame, _1, publisherGrayScale));
@@ -42,13 +42,25 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGr
     imageFinal.encoding = image->encoding;
 
     // Array with pixels
-    uint8_t *imageFinalData = new uint8_t[imageFinal.height * imageFinal.width * 3];
+    uint8_t *imageGrayData = new uint8_t[imageFinal.height * imageFinal.width * 3];
+    uint8_t *imageGaussianData = new uint8_t[imageFinal.height * imageFinal.width * 3];
 
     // Image to gray scale
-    CpuAlgorithms::getInstance().toGrayScale(imageFinalData, image->data.data(), imageFinal.width, imageFinal.height);
+    CpuAlgorithms::getInstance().toGrayScale(imageGrayData, image->data.data(), imageFinal.width, imageFinal.height);
+
+    // Gaussian Filter
+    float *mask = Utilities::getGaussianMatrix(Parameters::getInstance().getGaussianMaskSize(),
+                                               Parameters::getInstance().getGaussianAlpha());
+
+    CpuAlgorithms::getInstance().gaussianFilter(imageGaussianData, imageGrayData, mask, imageFinal.width, imageFinal.height,
+            Parameters::getInstance().getGaussianMaskSize());
 
     // Copy data to sensor_msgs::Image
-    CpuAlgorithms::getInstance().copyArrayToImage(imageFinal, imageFinalData);
+    CpuAlgorithms::getInstance().copyArrayToImage(imageFinal, imageGaussianData);
 
     publisherGrayScale.publish(imageFinal);
+
+    delete(imageGrayData);
+    delete(imageGaussianData);
+    delete(mask);
 }

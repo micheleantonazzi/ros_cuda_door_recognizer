@@ -17,8 +17,7 @@ find_package(OpenCV REQUIRED)
 
 find_package(CUDA REQUIRED)
 
-CUDA_ADD_LIBRARY(cuda_interface ${LIB_TYPE} src/cuda/cuda_interface.cu)
-
+CUDA_ADD_LIBRARY(gpu_methods ${LIB_TYPE} src/cuda/cuda_interface.cu src/utilities/utilities.h src/utilities/utilities.cpp)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -140,17 +139,21 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(door_recognizer_gpu src/door_recognizer_gpu.cpp src/utilities/parameters.h src/utilities/parameters.cpp)
+add_executable(door_recognizer_gpu src/door_recognizer_gpu.cpp src/utilities/parameters.h src/utilities/parameters.cpp
+        src/utilities/utilities.h src/utilities/utilities.cpp)
 
 add_executable(door_recognizer src/door_recognizer.cpp src/utilities/parameters.h src/utilities/parameters.cpp
-        src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp)
+        src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp src/utilities/utilities.h src/utilities/utilities.cpp)
 
 add_executable(test_performance src/test_performance.cpp src/utilities/parameters.h src/utilities/parameters.cpp
-        src/utilities/image.h src/utilities/image.cpp src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp src/utilities/pixel.h)
+        src/utilities/image.h src/utilities/image.cpp src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp src/utilities/pixel.h
+        src/utilities/utilities.h src/utilities/utilities.cpp)
 
-add_dependencies(door_recognizer_gpu cuda_interface)
+add_dependencies(door_recognizer_gpu gpu_methods)
 
-add_dependencies(test_performance cuda_interface)
+add_dependencies(door_recognizer gpu_methods)
+
+add_dependencies(test_performance gpu_methods)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -166,19 +169,20 @@ add_dependencies(test_performance cuda_interface)
 target_link_libraries(door_recognizer_gpu
         ${catkin_LIBRARIES}
         ${OpenCV_LIBS}
-        cuda_interface
+        gpu_methods
 )
 
 target_link_libraries(door_recognizer
         ${catkin_LIBRARIES}
         ${catkin_LIBRARIES}
         ${OpenCV_LIBS}
+        gpu_methods
 )
 
 target_link_libraries(test_performance
         ${catkin_LIBRARIES}
         ${OpenCV_LIBS}
-        cuda_interface
+        gpu_methods
 )
 
 #############
