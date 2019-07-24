@@ -19,7 +19,8 @@ public:
     void toGrayScale(unsigned char*, int, int);
     void toGrayScale(uint8_t*, const uint8_t*, int, int);
     void copyArrayToImage(sensor_msgs::Image&, uint8_t*);
-    void gaussianFilter(unsigned char *destination, unsigned char *source, float *matrix, int width, int height, int matrixDim);
+    void gaussianFilter(unsigned char *destination, unsigned char *source, float *mask, int width, int height, int maskDim);
+    void sobel(unsigned char *destination, unsigned char *source, int width, int height);
 };
 
 

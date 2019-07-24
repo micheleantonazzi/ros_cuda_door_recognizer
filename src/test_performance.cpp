@@ -60,6 +60,12 @@ int main(int argc, char **argv){
 
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-gaussian.jpg", imageGaussian);
 
+        // Sobel filter
+        Mat imageSobel(image->getOpenCVImage());
+        CpuAlgorithms::getInstance().sobel(imageSobel.data, imageGaussian.data, image->getWidth(), image->getHeight());
+
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-sobel.jpg", imageSobel);
+
         delete image;
         delete gaussianFilter;
 
