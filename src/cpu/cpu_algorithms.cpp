@@ -71,7 +71,7 @@ void CpuAlgorithms::sobel(unsigned char *destination, unsigned char *source, int
     int maskDim = 3;
     int *sobelMaskHorizontal = Utilities::getSobelMaskHorizontal();
 
-    float *sobelHorizontal = new float[width * height];
+    float sobelHorizontal[width * height];
 
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
@@ -190,6 +190,6 @@ void CpuAlgorithms::sobel(unsigned char *destination, unsigned char *source, int
             *(destination + (i * width + j) * 3 + 2)  = value;
         }
     }
-    average /= div;
-    printf("media %f\n", average);
+    delete(sobelMaskHorizontal);
+    delete(sobelMaskVertical);
 }
