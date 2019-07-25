@@ -12,42 +12,47 @@
           - door_med_res.jpg: 390 x 520 pixel
           - door_high_res.jpg: 3456 x 4608 pixel
     -->
-    <arg name="image_path" default="/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/test/door_med_res.jpg" />
+    <arg name="image_path" default="/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/test/door_high_res.jpg" />
 
     <!-- Number of block used to run the kernel that converts an image to gray scale -->
     <!-- Recommended values:
           - door_med_res.jpg: 500
           - door_high_res.jpg: 1024
     -->
-    <arg name="to_gray_scale_num_block" default="500" />
+    <arg name="to_gray_scale_num_block" default="1024" />
 
     <!-- Number of thread per block used to run the kernel that converts an image to gray scale -->
     <!-- Recommended values:
          - door_med_res.jpg: 256
          - door_high_res.jpg: 1024
     -->
-    <arg name="to_gray_scale_num_thread" default="256" />
+    <arg name="to_gray_scale_num_thread" default="1024" />
 
     <!-- Number of block used to run the kernel that applies the gaussian filter -->
     <!-- Recommended values:
           - door_med_res.jpg: 300
           - door_high_res.jpg: 2048
     -->
-    <arg name="gaussian_filter_num_block" default="300" />
+    <arg name="gaussian_filter_num_block" default="2048" />
 
     <!-- Number of thread per block used to run the kernel that applies the gaussian filter -->
     <!-- Recommended values:
           - door_med_res.jpg: 256
           - door_high_res.jpg: 1024
     -->
-    <arg name="gaussian_filter_num_thread" default="256" />
+    <arg name="gaussian_filter_num_thread" default="1024" />
 
     <!-- The path where to put the processed images -->
     <arg name="processed_images_path" default="/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/processed_images/" />
 
     <arg name="gaussian_mask_size" default="5" />
 
-    <arg name="gaussian_alpha" default="0.84" />
+    <!-- The parameter used to calculate the gaussian kernel
+         Recommended values:
+          - door_med_res.jpg: 0.84
+          - door_high_res.jpg: 1.4
+    -->
+    <arg name="gaussian_alpha" default="0.8" />
 
     <node pkg="ros_cuda_door_recognizer" type="test_performance" name="test_performance" output="screen">
         <param name="camera" value="$(arg camera)" />
