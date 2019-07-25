@@ -66,12 +66,12 @@ void CpuAlgorithms::gaussianFilter(unsigned char *destination, unsigned char *so
     }
 }
 
-void CpuAlgorithms::sobel(unsigned char *destination, unsigned char *source, int width, int height) {
+void CpuAlgorithms::sobel(float *edgeGradient, int *edgeDirection, unsigned char *source, int width, int height){
 
     int maskDim = 3;
     int *sobelMaskHorizontal = Utilities::getSobelMaskHorizontal();
 
-    float sobelHorizontal[width * height];
+    float *sobelHorizontal = new float[width * height];
 
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
@@ -85,12 +85,12 @@ void CpuAlgorithms::sobel(unsigned char *destination, unsigned char *source, int
                 }
             }
 
-            *(sobelHorizontal + (i * width + j)) = value;
+            *(sobelHorizontal + i * width + j) = value;
         }
     }
 
     int *sobelMaskVertical = Utilities::getSobelMaskVertical();
-    float sobelVertical[width * height];
+    float *sobelVertical = new float[width * height];
 
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
@@ -104,17 +104,14 @@ void CpuAlgorithms::sobel(unsigned char *destination, unsigned char *source, int
                 }
             }
 
-            *(sobelVertical + (i * width + j)) = value;
+            *(sobelVertical + i * width + j) = value;
         }
     }
-
-    int direction[width * height];
-    float gradient[width * height];
 
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
             float value = sqrt(pow(sobelHorizontal[i * width + j], 2) + pow(sobelVertical[i * width + j], 2));
-            *(gradient + i * width + j) = value;
+            *(edgeGradient + i * width + j) = value;
 
             float dir = atan2(sobelVertical[i * width + j], sobelHorizontal[i * width + j]) * 180 / M_PI;
             if (dir < 0)
@@ -128,68 +125,62 @@ void CpuAlgorithms::sobel(unsigned char *destination, unsigned char *source, int
             else
                 dir = 0;
 
-            *(direction + i * width + j) = dir;
+            *(edgeDirection + i * width + j) = dir;
         }
     }
 
-    float non_maximum_subpression[width * height];
+    delete(sobelMaskHorizontal);
+    delete(sobelMaskVertical);
+    delete(sobelHorizontal);
+    delete(sobelVertical);
+}
+
+void CpuAlgorithms::nonMaximumSuppression(unsigned char *destination, float *edgeGradient, int *edgeDirection, int width, int height) {
 
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
-            int dir = *(direction + i * width + j);
+            int dir = *(edgeDirection + i * width + j);
             float first = 0;
             float second = 0;
 
             if(dir == 0){
                 if(j - 1 >= 0)
-                    first = *(gradient + i * width + j - 1);
+                    first = *(edgeGradient + i * width + j - 1);
                 if(j + 1 < width)
-                    second = *(gradient + i * width + j + 1);
-
+                    second = *(edgeGradient + i * width + j + 1);
             }
             else if(dir == 90){
                 if(i - 1 >= 0)
-                    first = *(gradient + (i - 1) * width + j);
+                    first = *(edgeGradient + (i - 1) * width + j);
                 if(i + 1 < height)
-                    second = *(gradient + (i + 1) * width + j);
+                    second = *(edgeGradient + (i + 1) * width + j);
             }
             else if(dir == 45){
                 if(i - 1 >= 0 && j + 1 < width)
-                    first = *(gradient + (i - 1) * width + j + 1);
+                    first = *(edgeGradient + (i - 1) * width + j + 1);
                 if(i + 1 < height && j - 1 >= 0)
-                    second = *(gradient + (i + 1) * width + j - 1);
+                    second = *(edgeGradient + (i + 1) * width + j - 1);
             }
             else if(dir == 135){
                 if(i + 1 < height && j + 1 < width)
-                    first = *(gradient + (i + 1) * width + j + 1);
+                    first = *(edgeGradient + (i + 1) * width + j + 1);
                 if(i - 1 >= 0 && j - 1 >= 0)
-                    second = *(gradient + (i - 1) * width + j - 1);
+                    second = *(edgeGradient + (i - 1) * width + j - 1);
             }
 
-            float currentValue = *(gradient + i * width + j);
+            float currentValue = *(edgeGradient + i * width + j);
 
             if(!(currentValue >= first && currentValue >= second))
-                *(non_maximum_subpression + i * width + j) = 0;
+                currentValue = 0;
+            else if(currentValue > 50)
+                currentValue = 255;
             else
-                *(non_maximum_subpression + i * width + j) = currentValue;
+                currentValue = 0;
+
+            *(destination + (i * width + j) * 3) = currentValue;
+            *(destination + (i * width + j) * 3 + 1) = currentValue;
+            *(destination + (i * width + j) * 3 + 2)  = currentValue;
+
         }
     }
-
-    double average = 0;
-    int div = 0;
-
-    for (int i = 0; i < height; ++i) {
-        for (int j = 0; j < width; ++j) {
-            float value = *(non_maximum_subpression + i * width + j);
-            average += value;
-            if(value > 0)
-                div++;
-            value = value > 50 ? 255 : 0;
-            *(destination + (i * width + j) * 3) = value;
-            *(destination + (i * width + j) * 3 + 1) = value;
-            *(destination + (i * width + j) * 3 + 2)  = value;
-        }
-    }
-    delete(sobelMaskHorizontal);
-    delete(sobelMaskVertical);
 }

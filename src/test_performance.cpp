@@ -62,12 +62,21 @@ int main(int argc, char **argv){
 
         // Sobel filter
         Mat imageSobel(image->getOpenCVImage());
-        CpuAlgorithms::getInstance().sobel(imageSobel.data, imageGaussian.data, image->getWidth(), image->getHeight());
+
+        float *edgeGradient = new float[image->getWidth() * image->getHeight()];
+        int *edgeDirection = new int[image->getWidth() * image->getHeight()];
+        CpuAlgorithms::getInstance().sobel(edgeGradient, edgeDirection, imageGaussian.data,
+                image->getWidth(), image->getHeight());
+
+        CpuAlgorithms::getInstance().nonMaximumSuppression(imageSobel.data, edgeGradient, edgeDirection,
+                image->getWidth(), image->getHeight());
 
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-sobel.jpg", imageSobel);
 
         delete image;
         delete gaussianFilter;
+        delete edgeDirection;
+        delete edgeGradient;
 
         // GPU info
         cudaDeviceProp deviceProp;

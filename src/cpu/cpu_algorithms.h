@@ -20,7 +20,8 @@ public:
     void toGrayScale(uint8_t*, const uint8_t*, int, int);
     void copyArrayToImage(sensor_msgs::Image&, uint8_t*);
     void gaussianFilter(unsigned char *destination, unsigned char *source, float *mask, int width, int height, int maskDim);
-    void sobel(unsigned char *destination, unsigned char *source, int width, int height);
+    void sobel(float *edgeGradient, int *edgeDirection, unsigned char *source, int width, int height);
+    void nonMaximumSuppression(unsigned char *destination, float *edgeGradient, int *edgeDirection, int width, int height);
 };
 
 
