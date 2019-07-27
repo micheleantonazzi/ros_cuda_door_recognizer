@@ -35,6 +35,7 @@ In this section the algorithms implemented in CPU and GPU are compared in order 
 * **achieved occupancy:** this metrics is about the number of active warp. Its range of values is between 0 and 1, where 1 represent the maximum and the high efficiency
 *   **global memory load efficiency:** measures the efficiency with which the kernel read data from global memory. In GPU with memory access it is possible to read 128 byte, in this way if all 32 threads in a warp require a float (4 byte), the data will be given to all threads with a single transaction. But there is some conditions for having this property: the 128 bytes must be consecutive and aligned, so the first address of the transaction must be a multiple of 128. If the threads request for data in arbitrary positions, many transaction are made (each one read 128 byte) but many read values are discarded because they are not requested by the threads. This metric is the percentage of the byte read from the memory and the byte used by the threads, so if the value is 100% the maximum efficiency is achieved
 *   **global memory load efficiency:** the principle with which data is store in global memory is the same as written above. So if the value is 100% the pattern is respected and the efficiency is maximum
+*   **shared memory efficiency:** this metric measures the efficiency who with threads read and write the shared memory. It's expressed in precentage
 
 All the test are executed in a laptop with:
 
@@ -94,14 +95,15 @@ Block dimension: 256 x 1 x 1
 Performance:
 
 - **CPU**: 0.02162 second
-- **GPU**: 0.0002429 second (89 times faster)
+- **GPU**: 0.0002229 second (89 times faster)
 
 Metrics:
 
 - **branch efficiency:** 100%
 - **achieved occupancy:** 0.931
-- **global memory load efficiency:** 51.1%
+- **global memory load efficiency:** 97.7%
 - **global memory store efficiency:** 12.5%
+- **shared memory efficiency:** 96.1%
 
 #### Image 3456 x 4608
 
@@ -118,8 +120,9 @@ Metrics:
 
 - **branch efficiency:** 100%
 - **achieved occupancy:** 0.915
-- **global memory load efficiency:** 51.4%
+- **global memory load efficiency:** 97.7%
 - **global memory store efficiency:** 12.5%
+- **shared memory efficiency:** 96.1%
 
 
 
