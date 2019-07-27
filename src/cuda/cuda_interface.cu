@@ -400,13 +400,16 @@ __global__ void edge_gradient_direction(float *edgeGradient, int *edgeDirection,
         int start = blockDim.x * blockIdx.x * valuesPerThread;
 
         for (int i = 0; i < valuesPerThread && start + i * blockDim.x + threadIdx.x < imageSize; i++) {
-            float x = sobelHorizontal[start + i * blockDim.x + threadIdx.x];
-            float y = sobelVertical[start + i * blockDim.x + threadIdx.x];
+            int pos = start + i * blockDim.x + threadIdx.x;
+            float x = sobelHorizontal[pos];
+            float y = sobelVertical[pos];
 
-            float gradient = sqrt(pow(x, 2) + pow(y, 2));
-            edgeGradient[start + i * blockDim.x + threadIdx.x] = gradient;
+            // The function pow isn't used to improve the performance, in fact the float operation is faster than the double ones
+            float gradient = sqrt(x * x + y * y);
+            edgeGradient[pos] = gradient;
 
-            float dir = atan2(y, x) * 180 / M_PI;
+            // All values are cart to float in order to improve the performance, in fact the float operation is faster than the double ones
+            float dir = (float) atan2(y, x) * 180 / (float) M_PI;
 
             if (dir < 0)
                 dir += 180;
