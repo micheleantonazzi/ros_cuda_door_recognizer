@@ -204,8 +204,8 @@ __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, in
             for (int j = 0; j < maskDim; ++j) {
                 int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
                 if(column + j - maskDim / 2 >= 0 && column + j - maskDim / 2 < width){
-                    unsigned char x = smem[j + (blockDim.x * i) + threadIdx.x];
-                    value += x * maskConstant[j];
+                    float pixel = smem[j + (blockDim.x * i) + threadIdx.x];
+                    value += (unsigned char) pixel * maskConstant[j];
                 }
             }
             int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
