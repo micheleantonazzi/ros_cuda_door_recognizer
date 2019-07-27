@@ -418,13 +418,13 @@ __global__ void edge_gradient_direction(float *edgeGradient, int *edgeDirection,
                 dir = 135;
             else
                 dir = 0;
-            edgeDirection[start + i * blockDim.x + threadIdx.x] = dir;
+            edgeDirection[pos] = dir;
         }
     }
 }
 
 double CudaInterface::sobelFilter(float *edgeGradient, int *edgeDirection, Pixel *source, int width, int height,
-                                  int numBlocks, int numThread) {
+                                  int numBlocksConvolution, int numThreadConvolution, int numBlockLinear, int numThreadLinear) {
 
     float *sobelHorizontal, *sobelVertical, *transposeImage1, *transposeImage2;
 
@@ -433,18 +433,26 @@ double CudaInterface::sobelFilter(float *edgeGradient, int *edgeDirection, Pixel
     cudaMalloc(&transposeImage1, width * height * sizeof(float));
     cudaMalloc(&transposeImage2, width * height * sizeof(float));
 
-    int sharedMemory = ((width * height) / (numBlocks * numThread) + 1) * numThread + 2;
+    // Vertical convolution
+    cudaStream_t stream;
+    cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+    cudaEvent_t verticalEnd;
+    cudaEventCreate(&verticalEnd);
+
+    int sharedMemory = ((width * height) / (numBlocksConvolution * numThreadConvolution) + 1) * numThreadConvolution + 2;
 
     double time = Utilities::seconds();
     // Horizontal convolution
-    sobel_convolution_one<<<numBlocks, numThread, sharedMemory * sizeof(Pixel)>>>(transposeImage1, source, 1, width, height);
-    sobel_convolution_two<<<numBlocks, numThread, sharedMemory * sizeof(Pixel)>>>(sobelHorizontal, transposeImage1, 2, height, width);
+    sobel_convolution_one<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel)>>>(transposeImage1, source, 1, width, height);
+    sobel_convolution_two<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel)>>>(sobelHorizontal, transposeImage1, 2, height, width);
 
-    // Vertical convolution
-    sobel_convolution_one<<<numBlocks, numThread, sharedMemory * sizeof(Pixel)>>>(transposeImage2, source, 2, width, height);
-    sobel_convolution_two<<<numBlocks, numThread, sharedMemory * sizeof(Pixel)>>>(sobelVertical, transposeImage2, 1, height, width);
+    sobel_convolution_one<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel), stream>>>(transposeImage2, source, 2, width, height);
+    sobel_convolution_two<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel), stream>>>(sobelVertical, transposeImage2, 1, height, width);
+    cudaEventRecord(verticalEnd, stream);
 
-    edge_gradient_direction<<<numBlocks, numThread>>>(edgeGradient, edgeDirection, sobelHorizontal, sobelVertical, width, height);
+    cudaStreamWaitEvent(0, verticalEnd, 0);
+
+    edge_gradient_direction<<<numBlockLinear, numThreadLinear>>>(edgeGradient, edgeDirection, sobelHorizontal, sobelVertical, width, height);
     cudaDeviceSynchronize();
     time = Utilities::seconds() - time;
 
@@ -452,39 +460,56 @@ double CudaInterface::sobelFilter(float *edgeGradient, int *edgeDirection, Pixel
     cudaFree(sobelVertical);
     cudaFree(transposeImage1);
     cudaFree(transposeImage2);
+    cudaStreamDestroy(stream);
+    cudaEventDestroy(verticalEnd);
     return time;
 }
 
 __global__ void non_maximum_suppression(Pixel *destination, float *edgeGradient, int *edgeDirection, int width, int height) {
-    for (int i = 0; i < height; ++i) {
-        for (int j = 0; j < width; ++j) {
-            int dir = *(edgeDirection + i * width + j);
+    int imageSize = width * height;
+
+    int threadTot = gridDim.x * blockDim.x;
+
+    int valuesPerThread = (imageSize / threadTot) + 1;
+
+    int threadId = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (threadId * valuesPerThread < imageSize) {
+
+        int start = blockDim.x * blockIdx.x * valuesPerThread;
+
+        for (int i = 0; i < valuesPerThread && start + i * blockDim.x + threadIdx.x < imageSize; i++) {
+            int pos = start + i * blockDim.x + threadIdx.x;
+            int x = pos / width;
+            int y = pos % width;
+
+            int dir = edgeDirection[pos];
             float first = 0;
             float second = 0;
 
             if (dir == 0) {
-                if (j - 1 >= 0)
-                    first = *(edgeGradient + i * width + j - 1);
-                if (j + 1 < width)
-                    second = *(edgeGradient + i * width + j + 1);
+                if (y - 1 >= 0)
+                    first = *(edgeGradient + x * width + y - 1);
+                if (y + 1 < width)
+                    second = *(edgeGradient + x * width + y + 1);
             } else if (dir == 90) {
-                if (i - 1 >= 0)
-                    first = *(edgeGradient + (i - 1) * width + j);
-                if (i + 1 < height)
-                    second = *(edgeGradient + (i + 1) * width + j);
+                if (x - 1 >= 0)
+                    first = *(edgeGradient + (x - 1) * width + y);
+                if (x + 1 < height)
+                    second = *(edgeGradient + (x + 1) * width + y);
             } else if (dir == 45) {
-                if (i - 1 >= 0 && j + 1 < width)
-                    first = *(edgeGradient + (i - 1) * width + j + 1);
-                if (i + 1 < height && j - 1 >= 0)
-                    second = *(edgeGradient + (i + 1) * width + j - 1);
+                if (x - 1 >= 0 && y + 1 < width)
+                    first = *(edgeGradient + (x - 1) * width + y + 1);
+                if (x + 1 < height && y - 1 >= 0)
+                    second = *(edgeGradient + (x + 1) * width + y - 1);
             } else if (dir == 135) {
-                if (i + 1 < height && j + 1 < width)
-                    first = *(edgeGradient + (i + 1) * width + j + 1);
-                if (i - 1 >= 0 && j - 1 >= 0)
-                    second = *(edgeGradient + (i - 1) * width + j - 1);
+                if (x + 1 < height && y + 1 < width)
+                    first = *(edgeGradient + (x + 1) * width + y + 1);
+                if (x - 1 >= 0 && y - 1 >= 0)
+                    second = *(edgeGradient + (x - 1) * width + y - 1);
             }
 
-            float currentValue = *(edgeGradient + i * width + j);
+            float currentValue = edgeGradient[pos];
 
             if (!(currentValue >= first && currentValue >= second))
                 currentValue = 0;
@@ -495,15 +520,15 @@ __global__ void non_maximum_suppression(Pixel *destination, float *edgeGradient,
 
             unsigned char finalChar = currentValue;
             float final = (finalChar << 16) + (finalChar << 8) + finalChar;
-            *(destination + (i * width + j)) = final;
+            destination[pos] = final;
         }
     }
 }
 
 double CudaInterface::nonMaximumSuppression(Pixel *destination, float *edgeGradient, int *edgeDirection, int width,
-                                            int height) {
+                                            int height, int numBlocks, int numThread) {
     double time = Utilities::seconds();
-    non_maximum_suppression<<<1, 1>>>(destination, edgeGradient, edgeDirection, width, height);
+    non_maximum_suppression<<<numBlocks, numThread>>>(destination, edgeGradient, edgeDirection, width, height);
     cudaDeviceSynchronize();
     return Utilities::seconds() - time;
 }
