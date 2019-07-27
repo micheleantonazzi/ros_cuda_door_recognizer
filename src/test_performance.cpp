@@ -65,11 +65,18 @@ int main(int argc, char **argv){
 
         float *edgeGradient = new float[image->getWidth() * image->getHeight()];
         int *edgeDirection = new int[image->getWidth() * image->getHeight()];
+
+        time = Utilities::seconds();
         CpuAlgorithms::getInstance().sobel(edgeGradient, edgeDirection, imageGaussian.data,
                 image->getWidth(), image->getHeight());
+        time = Utilities::seconds() - time;
+        cout << " - apply sobel filter: " << time << "\n";
 
+        time = Utilities::seconds();
         CpuAlgorithms::getInstance().nonMaximumSuppression(imageSobel.data, edgeGradient, edgeDirection,
                 image->getWidth(), image->getHeight());
+        time = Utilities::seconds() - time;
+        cout << " - non maximum suppression: " << time << "\n";
 
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-sobel.jpg", imageSobel);
 
@@ -77,6 +84,8 @@ int main(int argc, char **argv){
         delete gaussianFilter;
         delete edgeDirection;
         delete edgeGradient;
+
+        cout << endl;
 
         // GPU info
         cudaDeviceProp deviceProp;
@@ -144,19 +153,38 @@ int main(int argc, char **argv){
                                       gaussianArray, Parameters::getInstance().getGaussianMaskSize(), Parameters::getInstance().getGaussianFilterNumBlock(),
                                       Parameters::getInstance().getGaussianFilterNumThread());
 
-        cudaMemcpy(imageSource, destinationGaussianFilterGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
-
         cout << time << endl;
 
+        cudaMemcpy(imageSource, destinationGaussianFilterGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
-
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-gaussian-filter.jpg", image->getOpenCVImage());
+
+        // Apply sobel filter
+        float *edgeGradientGpu;
+        int *edgeDirectionGpu;
+
+        cudaMalloc(&edgeGradientGpu, image->getWidth() * image->getHeight() * sizeof(float));
+        cudaMalloc(&edgeDirectionGpu, image->getWidth() * image->getHeight() * sizeof(int));
+
+        time = CudaInterface::sobelFilter(edgeGradientGpu, edgeDirectionGpu, destinationGaussianFilterGpu, image->getWidth(), image->getHeight(),
+                Parameters::getInstance().getGaussianFilterNumBlock(), Parameters::getInstance().getGaussianFilterNumThread());
+
+        cout << " - apply sobel filter: " << time << endl;
+
+        CudaInterface::nonMaximumSuppression(destinationGaussianFilterGpu, edgeGradientGpu, edgeDirectionGpu, image->getWidth(), image->getHeight());
+
+
+        cudaMemcpy(imageSource, destinationGaussianFilterGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
+        CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-sobel.jpg", image->getOpenCVImage());
 
         cudaFreeHost(imageSource);
         cudaFree(imageSourceGpu);
         cudaFree(destinationGrayScaleGpu);
         cudaFree(destinationGaussianFilterGpu);
         cudaFreeHost(gaussianArray);
+        cudaFree(edgeDirectionGpu);
+        cudaFree(edgeGradientGpu);
 
         /*float *m = Utilities::getGaussianMatrix(5, 0.8);
         for (int i = 0; i < 5; ++i) {

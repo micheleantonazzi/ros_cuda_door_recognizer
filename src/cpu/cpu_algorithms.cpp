@@ -112,7 +112,6 @@ void CpuAlgorithms::sobel(float *edgeGradient, int *edgeDirection, unsigned char
         for (int j = 0; j < width; ++j) {
             float value = sqrt(pow(sobelHorizontal[i * width + j], 2) + pow(sobelVertical[i * width + j], 2));
             *(edgeGradient + i * width + j) = value;
-
             float dir = atan2(sobelVertical[i * width + j], sobelHorizontal[i * width + j]) * 180 / M_PI;
             if (dir < 0)
                 dir += 180;
@@ -180,7 +179,6 @@ void CpuAlgorithms::nonMaximumSuppression(unsigned char *destination, float *edg
             *(destination + (i * width + j) * 3) = currentValue;
             *(destination + (i * width + j) * 3 + 1) = currentValue;
             *(destination + (i * width + j) * 3 + 2)  = currentValue;
-
         }
     }
 }

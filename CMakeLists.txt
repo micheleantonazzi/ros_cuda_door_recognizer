@@ -16,7 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(OpenCV REQUIRED)
 
 find_package(CUDA REQUIRED)
-CUDA_ADD_LIBRARY(gpu_methods ${LIB_TYPE} src/cuda/cuda_interface.cu src/utilities/utilities.h src/utilities/utilities.cpp)
+CUDA_ADD_LIBRARY(gpu_int ${LIB_TYPE} src/cuda/cuda_interface.cu src/utilities/utilities.h src/utilities/utilities.cpp)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -148,11 +148,11 @@ add_executable(test_performance src/test_performance.cpp src/utilities/parameter
         src/utilities/image.h src/utilities/image.cpp src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp src/utilities/pixel.h
         src/utilities/utilities.h src/utilities/utilities.cpp)
 
-add_dependencies(door_recognizer_gpu gpu_methods)
+add_dependencies(door_recognizer_gpu gpu_int)
 
-add_dependencies(door_recognizer gpu_methods)
+add_dependencies(door_recognizer gpu_int)
 
-add_dependencies(test_performance gpu_methods)
+add_dependencies(test_performance gpu_int)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -168,19 +168,19 @@ add_dependencies(test_performance gpu_methods)
 target_link_libraries(door_recognizer_gpu
         ${catkin_LIBRARIES}
         ${OpenCV_LIBS}
-        gpu_methods
+        gpu_int
 )
 
 target_link_libraries(door_recognizer
         ${catkin_LIBRARIES}
         ${OpenCV_LIBS}
-        gpu_methods
+        gpu_int
 )
 
 target_link_libraries(test_performance
         ${catkin_LIBRARIES}
         ${OpenCV_LIBS}
-        gpu_methods
+        gpu_int
 )
 
 #############

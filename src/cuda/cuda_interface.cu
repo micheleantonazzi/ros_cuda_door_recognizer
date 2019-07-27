@@ -2,6 +2,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
+#include <cmath>
 #include "cuda_interface.h"
 #include "utilities/gpu_utilities.h"
 #include "../utilities/utilities.h"
@@ -215,6 +216,7 @@ __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, in
             *(destination + column * height + row) = final;
         }
     }
+
 }
 
 
@@ -244,7 +246,7 @@ double CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int widt
 void CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int width, int height, float *gaussianMask,
                                      int maskDim, int numBlocks, int numThread, cudaStream_t &stream) {
     // Alloc the constant memory
-    cudaMemcpyToSymbol(maskConstant, gaussianMask, maskDim * sizeof(float));
+    cudaMemcpyToSymbolAsync(maskConstant, gaussianMask, maskDim * sizeof(float), 0, cudaMemcpyHostToDevice, stream);
 
     // Alloc device memory to put the transpose image
     Pixel *transposeImage;
@@ -259,4 +261,249 @@ void CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int width,
 
     cudaStreamSynchronize(stream);
     cudaFree(transposeImage);
+}
+
+// The sobel filter requires two bi-dimensional convolution, one horizontal and one vertical
+// My implementation applies four one-dimensional convolution, two horizontal and two vertical
+// Each group of two convolution is applied by two different kernel.
+// This kernel are very similar but the first accepts a Pixel image and convert it in a float image
+// in order to represent the edge gradient
+
+__constant__ int sobelKernel1[3] = {-1, 0, 1};
+__constant__ int sobelKernel2[3] = {1, 2, 1};
+
+__global__ void sobel_convolution_one(float *destination, Pixel *source, int constant, int width, int height){
+
+    int *kernel = (int *) &sobelKernel1;
+    if(constant == 2)
+        kernel = (int *) &sobelKernel2;
+
+    extern __shared__ Pixel smem[];
+
+    int pixelPerThread = (width * height) / (gridDim.x * blockDim.x) + 1;
+
+    // First pixel of a block
+    int blockStart = blockDim.x * pixelPerThread * blockIdx.x;
+
+    // Load first values
+    if (threadIdx.x < 1 && blockStart + threadIdx.x < width * height){
+        smem[threadIdx.x] = 0;
+        int start = (blockStart + threadIdx.x) % width;
+        if(start - 1 >= 0)
+            smem[threadIdx.x] = *(source + blockStart + threadIdx.x - 1);
+    }
+
+    if(blockStart + threadIdx.x < width * height){
+        for (int i = 0; i < pixelPerThread; ++i) {
+            if(blockStart + (blockDim.x * i) + threadIdx.x < width * height){
+                smem[1 + (blockDim.x * i) + threadIdx.x] = *(source + blockStart + (blockDim.x * i) + threadIdx.x);
+            }
+        }
+    }
+
+    // Load final part
+    if(threadIdx.x >= blockDim.x - 1 && blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x < width * height){
+        smem[2 + blockDim.x * (pixelPerThread - 1) + threadIdx.x] = 0;
+        if(blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x < width * height - 1){
+            smem[2 + blockDim.x * (pixelPerThread - 1) + threadIdx.x] = *(source + blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x + 1);
+        }
+    }
+
+    __syncthreads();
+
+    for (int i = 0; i < pixelPerThread; ++i) {
+
+        if(blockStart + (blockDim.x * i) + threadIdx.x < width * height){
+            float value = 0;
+            for (int j = 0; j < 3; ++j) {
+                int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
+                if(column + j - 1 >= 0 && column + j - 1 < width){
+                    float pixel = smem[j + (blockDim.x * i) + threadIdx.x];
+                    value += (unsigned char) pixel * kernel[j];
+                }
+            }
+            int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
+            int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
+            *(destination + column * height + row) = value;
+        }
+    }
+}
+
+__global__ void sobel_convolution_two(float *destination, float *source, int constant, int width, int height){
+
+    int *kernel = (int *) &sobelKernel1;
+    if(constant == 2)
+        kernel = (int *) &sobelKernel2;
+
+    extern __shared__ Pixel smem[];
+
+    int pixelPerThread = (width * height) / (gridDim.x * blockDim.x) + 1;
+
+    // First pixel of a block
+    int blockStart = blockDim.x * pixelPerThread * blockIdx.x;
+
+    // Load first values
+    if (threadIdx.x < 1 && blockStart + threadIdx.x < width * height){
+        smem[threadIdx.x] = 0;
+        int start = (blockStart + threadIdx.x) % width;
+        if(start - 1 >= 0)
+            smem[threadIdx.x] = *(source + blockStart + threadIdx.x - 1);
+    }
+
+    if(blockStart + threadIdx.x < width * height){
+        for (int i = 0; i < pixelPerThread; ++i) {
+            if(blockStart + (blockDim.x * i) + threadIdx.x < width * height){
+                smem[1 + (blockDim.x * i) + threadIdx.x] = *(source + blockStart + (blockDim.x * i) + threadIdx.x);
+            }
+        }
+    }
+
+    // Load final part
+    if(threadIdx.x >= blockDim.x - 1 && blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x < width * height){
+        smem[2 + blockDim.x * (pixelPerThread - 1) + threadIdx.x] = 0;
+        if(blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x < width * height - 1){
+            smem[2 + blockDim.x * (pixelPerThread - 1) + threadIdx.x] = *(source + blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x + 1);
+        }
+    }
+
+    __syncthreads();
+
+    for (int i = 0; i < pixelPerThread; ++i) {
+
+        if(blockStart + (blockDim.x * i) + threadIdx.x < width * height){
+            float value = 0;
+            for (int j = 0; j < 3; ++j) {
+                int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
+                if(column + j - 1 >= 0 && column + j - 1 < width){
+                    float pixel = smem[j + (blockDim.x * i) + threadIdx.x];
+                    value += pixel * kernel[j];
+                }
+            }
+            int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
+            int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
+            *(destination + column * height + row) = value;
+        }
+    }
+}
+
+__global__ void edge_gradient_direction(float *edgeGradient, int *edgeDirection, float *sobelHorizontal, float *sobelVertical, int width, int height) {
+    int imageSize = width * height;
+
+    int threadTot = gridDim.x * blockDim.x;
+
+    int valuesPerThread = (imageSize / threadTot) + 1;
+
+    int threadId = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (threadId * valuesPerThread < imageSize) {
+
+        int start = blockDim.x * blockIdx.x * valuesPerThread;
+
+        for (int i = 0; i < valuesPerThread && start + i * blockDim.x + threadIdx.x < imageSize; i++) {
+            float x = sobelHorizontal[start + i * blockDim.x + threadIdx.x];
+            float y = sobelVertical[start + i * blockDim.x + threadIdx.x];
+
+            float gradient = sqrt(pow(x, 2) + pow(y, 2));
+            edgeGradient[start + i * blockDim.x + threadIdx.x] = gradient;
+
+            float dir = atan2(y, x) * 180 / M_PI;
+
+            if (dir < 0)
+                dir += 180;
+            if (dir > 22.5 && dir <= 67.5)
+                dir = 45;
+            else if (dir > 67.5 && dir <= 112.5)
+                dir = 90;
+            else if (dir > 112.5 && dir <= 157.5)
+                dir = 135;
+            else
+                dir = 0;
+            edgeDirection[start + i * blockDim.x + threadIdx.x] = dir;
+        }
+    }
+}
+
+double CudaInterface::sobelFilter(float *edgeGradient, int *edgeDirection, Pixel *source, int width, int height,
+                                  int numBlocks, int numThread) {
+
+    float *sobelHorizontal, *sobelVertical, *transposeImage1, *transposeImage2;
+
+    cudaMalloc(&sobelHorizontal, width * height * sizeof(float));
+    cudaMalloc(&sobelVertical, width * height * sizeof(float));
+    cudaMalloc(&transposeImage1, width * height * sizeof(float));
+    cudaMalloc(&transposeImage2, width * height * sizeof(float));
+
+    int sharedMemory = ((width * height) / (numBlocks * numThread) + 1) * numThread + 2;
+
+    double time = Utilities::seconds();
+    // Horizontal convolution
+    sobel_convolution_one<<<numBlocks, numThread, sharedMemory * sizeof(Pixel)>>>(transposeImage1, source, 1, width, height);
+    sobel_convolution_two<<<numBlocks, numThread, sharedMemory * sizeof(Pixel)>>>(sobelHorizontal, transposeImage1, 2, height, width);
+
+    // Vertical convolution
+    sobel_convolution_one<<<numBlocks, numThread, sharedMemory * sizeof(Pixel)>>>(transposeImage2, source, 2, width, height);
+    sobel_convolution_two<<<numBlocks, numThread, sharedMemory * sizeof(Pixel)>>>(sobelVertical, transposeImage2, 1, height, width);
+
+    edge_gradient_direction<<<numBlocks, numThread>>>(edgeGradient, edgeDirection, sobelHorizontal, sobelVertical, width, height);
+    cudaDeviceSynchronize();
+    time = Utilities::seconds() - time;
+
+    cudaFree(sobelHorizontal);
+    cudaFree(sobelVertical);
+    cudaFree(transposeImage1);
+    cudaFree(transposeImage2);
+    return time;
+}
+
+__global__ void non_maximum_suppression(Pixel *destination, float *edgeGradient, int *edgeDirection, int width, int height) {
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            int dir = *(edgeDirection + i * width + j);
+            float first = 0;
+            float second = 0;
+
+            if (dir == 0) {
+                if (j - 1 >= 0)
+                    first = *(edgeGradient + i * width + j - 1);
+                if (j + 1 < width)
+                    second = *(edgeGradient + i * width + j + 1);
+            } else if (dir == 90) {
+                if (i - 1 >= 0)
+                    first = *(edgeGradient + (i - 1) * width + j);
+                if (i + 1 < height)
+                    second = *(edgeGradient + (i + 1) * width + j);
+            } else if (dir == 45) {
+                if (i - 1 >= 0 && j + 1 < width)
+                    first = *(edgeGradient + (i - 1) * width + j + 1);
+                if (i + 1 < height && j - 1 >= 0)
+                    second = *(edgeGradient + (i + 1) * width + j - 1);
+            } else if (dir == 135) {
+                if (i + 1 < height && j + 1 < width)
+                    first = *(edgeGradient + (i + 1) * width + j + 1);
+                if (i - 1 >= 0 && j - 1 >= 0)
+                    second = *(edgeGradient + (i - 1) * width + j - 1);
+            }
+
+            float currentValue = *(edgeGradient + i * width + j);
+
+            if (!(currentValue >= first && currentValue >= second))
+                currentValue = 0;
+            else if (currentValue > 50)
+                currentValue = 255;
+            else
+                currentValue = 0;
+
+            unsigned char finalChar = currentValue;
+            float final = (finalChar << 16) + (finalChar << 8) + finalChar;
+            *(destination + (i * width + j)) = final;
+        }
+    }
+}
+
+double CudaInterface::nonMaximumSuppression(Pixel *destination, float *edgeGradient, int *edgeDirection, int width,
+                                            int height) {
+    double time = Utilities::seconds();
+    non_maximum_suppression<<<1, 1>>>(destination, edgeGradient, edgeDirection, width, height);
+    cudaDeviceSynchronize();
+    return Utilities::seconds() - time;
 }
