@@ -160,7 +160,7 @@ double CudaInterface::toGrayScale(Pixel *destination, Pixel *source, int width, 
 }
 
 
-__constant__ float *maskConstant;
+__constant__ float maskConstant[10];
 
 __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, int width, int height,
                                 int maskDim){
@@ -221,10 +221,7 @@ __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, in
 double CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int width, int height, float *gaussianMask,
                                      int maskDim, int numBlocks, int numThread) {
     // Alloc the constant memory
-    float *maskGpu;
-    cudaMalloc(&maskGpu, maskDim * sizeof(float));
-    cudaMemcpy(maskGpu, gaussianMask, maskDim * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpyToSymbol(maskConstant, &maskGpu, sizeof(float*));
+    cudaMemcpyToSymbol(maskConstant, gaussianMask, maskDim * sizeof(float));
 
     // Alloc device memory to put the transpose image
     Pixel *transposeImage;
@@ -239,7 +236,7 @@ double CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int widt
     gaussian_filter_horizontal<<<numBlocks, numThread, sharedMemory * sizeof(Pixel)>>>(destination, transposeImage, height, width, maskDim);
     cudaDeviceSynchronize();
     time = Utilities::seconds() - time;
-    cudaFree(maskGpu);
+
     cudaFree(transposeImage);
     return time;
 }
@@ -247,10 +244,7 @@ double CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int widt
 void CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int width, int height, float *gaussianMask,
                                      int maskDim, int numBlocks, int numThread, cudaStream_t &stream) {
     // Alloc the constant memory
-    float *maskGpu;
-    cudaMalloc(&maskGpu, maskDim * sizeof(float));
-    cudaMemcpyAsync(maskGpu, gaussianMask, maskDim * sizeof(float), cudaMemcpyHostToDevice, stream);
-    cudaMemcpyToSymbolAsync(maskConstant, &maskGpu, sizeof(float*), 0, cudaMemcpyHostToDevice, stream);
+    cudaMemcpyToSymbol(maskConstant, gaussianMask, maskDim * sizeof(float));
 
     // Alloc device memory to put the transpose image
     Pixel *transposeImage;
@@ -264,6 +258,5 @@ void CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int width,
     gaussian_filter_horizontal<<<numBlocks, numThread, sharedMemory * sizeof(Pixel), stream>>>(destination, transposeImage, height, width, maskDim);
 
     cudaStreamSynchronize(stream);
-    cudaFree(maskGpu);
     cudaFree(transposeImage);
 }
