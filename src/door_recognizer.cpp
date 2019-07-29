@@ -54,7 +54,14 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGr
 
     CpuAlgorithms::getInstance().gaussianFilter(imageGaussianData, imageGrayData, mask, imageFinal.width, imageFinal.height,
             Parameters::getInstance().getGaussianMaskSize());
+    
+    float *edgeGradient = new float[imageFinal.width * imageFinal.height];
+    int *edgeDirection = new int[imageFinal.width * imageFinal.height];
+    
+    CpuAlgorithms::getInstance().sobel(edgeGradient, edgeDirection, imageGaussianData, imageFinal.width, imageFinal.height);
 
+    CpuAlgorithms::getInstance().nonMaximumSuppression(imageGaussianData, edgeGradient, edgeDirection, imageFinal.width, imageFinal.height);
+    
     // Copy data to sensor_msgs::Image
     CpuAlgorithms::getInstance().copyArrayToImage(imageFinal, imageGaussianData);
 
@@ -63,4 +70,6 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGr
     delete(imageGrayData);
     delete(imageGaussianData);
     delete(mask);
+    delete(edgeDirection);
+    delete(edgeGradient);
 }
