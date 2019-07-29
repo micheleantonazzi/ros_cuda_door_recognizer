@@ -527,12 +527,11 @@ __global__ void non_maximum_suppression(Pixel *destination, float *edgeGradient,
 
             if (!(currentValue >= first && currentValue >= second))
                 currentValue = 0;
-            else if (currentValue > 50)
-                currentValue = 255;
-            else
-                currentValue = 0;
+            unsigned char finalChar = 0;
 
-            unsigned char finalChar = currentValue;
+            if (currentValue > 50)
+                finalChar = 255;
+
             float final = (finalChar << 16) + (finalChar << 8) + finalChar;
             destination[pos] = final;
         }
