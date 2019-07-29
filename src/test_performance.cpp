@@ -107,9 +107,9 @@ int main(int argc, char **argv){
                 " - height: " << image->getHeight() << "\n" <<
                 "Operations in GPU:\n";
 
-        cout << " - convert to gray scale: " << Parameters::getInstance().getToGrayScaleNumBlock() <<
-                " blocks, " << Parameters::getInstance().getToGrayScaleNumThread() <<
-                " thread per block: ";
+        cout << " - convert to gray scale: " << Parameters::getInstance().getLinearKernelNumBlock() <<
+             " blocks, " << Parameters::getInstance().getLinearKernelNumThread() <<
+             " thread per block: ";
 
         int sizeImage = image->getHeight() * image->getWidth();
 
@@ -127,7 +127,8 @@ int main(int argc, char **argv){
         cudaMemcpy(imageSourceGpu, imageSource, sizeImage * sizeof(Pixel), cudaMemcpyHostToDevice);
 
         time = CudaInterface::toGrayScale(destinationGrayScaleGpu, imageSourceGpu, image->getWidth(),
-                image->getHeight(), Parameters::getInstance().getToGrayScaleNumBlock(), Parameters::getInstance().getToGrayScaleNumThread());
+                                          image->getHeight(), Parameters::getInstance().getLinearKernelNumBlock(),
+                                          Parameters::getInstance().getLinearKernelNumThread());
 
         cudaMemcpy(imageSource, destinationGrayScaleGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
 
@@ -139,8 +140,8 @@ int main(int argc, char **argv){
 
         // ----------------- Apply Gaussian filter --------------- //
 
-        cout << " - apply gaussian filter: " << Parameters::getInstance().getGaussianFilterNumBlock() <<
-             " blocks, " << Parameters::getInstance().getGaussianFilterNumThread() <<
+        cout << " - apply gaussian filter: " << Parameters::getInstance().getConvolutionKernelNumBlock() <<
+             " blocks, " << Parameters::getInstance().getConvolutionKernelNumThread() <<
              " thread per block: ";
 
         Pixel *destinationGaussianFilterGpu;
@@ -150,8 +151,9 @@ int main(int argc, char **argv){
                                                                  Parameters::getInstance().getGaussianAlpha());
 
         time = CudaInterface::gaussianFilter(destinationGaussianFilterGpu, destinationGrayScaleGpu, image->getWidth(), image->getHeight(),
-                                      gaussianArray, Parameters::getInstance().getGaussianMaskSize(), Parameters::getInstance().getGaussianFilterNumBlock(),
-                                      Parameters::getInstance().getGaussianFilterNumThread());
+                                      gaussianArray, Parameters::getInstance().getGaussianMaskSize(),
+                                             Parameters::getInstance().getConvolutionKernelNumBlock(),
+                                             Parameters::getInstance().getConvolutionKernelNumThread());
 
         cout << time << endl;
 
@@ -167,14 +169,16 @@ int main(int argc, char **argv){
         cudaMalloc(&edgeDirectionGpu, image->getWidth() * image->getHeight() * sizeof(int));
 
         time = CudaInterface::sobelFilter(edgeGradientGpu, edgeDirectionGpu, destinationGaussianFilterGpu, image->getWidth(), image->getHeight(),
-                Parameters::getInstance().getGaussianFilterNumBlock(), Parameters::getInstance().getGaussianFilterNumThread(),
-                Parameters::getInstance().getToGrayScaleNumBlock(), Parameters::getInstance().getToGrayScaleNumThread());
+                                          Parameters::getInstance().getConvolutionKernelNumBlock(),
+                                          Parameters::getInstance().getConvolutionKernelNumThread(),
+                                          Parameters::getInstance().getLinearKernelNumBlock(),
+                                          Parameters::getInstance().getLinearKernelNumThread());
 
         cout << " - apply sobel filter: " << time << endl;
 
         time = CudaInterface::nonMaximumSuppression(destinationGaussianFilterGpu, edgeGradientGpu, edgeDirectionGpu,
-                image->getWidth(), image->getHeight(), Parameters::getInstance().getToGrayScaleNumBlock(),
-                Parameters::getInstance().getToGrayScaleNumThread());
+                image->getWidth(), image->getHeight(), Parameters::getInstance().getLinearKernelNumBlock(),
+                                                    Parameters::getInstance().getLinearKernelNumThread());
 
         cout << " - non maximum subpression: " << time << endl;
 

@@ -77,23 +77,28 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGr
     cudaMemcpyAsync(imageSourceGpu, imageSource,  image->width * image->height * sizeof(Pixel), cudaMemcpyHostToDevice, stream);
 
     CudaInterface::toGrayScale(grayScaleGpu, imageSourceGpu, image->width, image->height,
-            Parameters::getInstance().getToGrayScaleNumBlock(), Parameters::getInstance().getToGrayScaleNumThread(), stream);
+                               Parameters::getInstance().getLinearKernelNumBlock(),
+                               Parameters::getInstance().getLinearKernelNumThread(), stream);
 
     // Gaussian filter
     CudaInterface::gaussianFilter(gaussianImageGpu, grayScaleGpu, transposeImage, image->width, image->height,
-                                  mask, Parameters::getInstance().getGaussianMaskSize(), Parameters::getInstance().getGaussianFilterNumBlock(),
-                                  Parameters::getInstance().getGaussianFilterNumThread(), stream);
+                                  mask, Parameters::getInstance().getGaussianMaskSize(),
+                                  Parameters::getInstance().getConvolutionKernelNumBlock(),
+                                  Parameters::getInstance().getConvolutionKernelNumThread(), stream);
 
     // Sobel filter
     CudaInterface::sobelFilter(edgeGradient, edgeDirection, gaussianImageGpu, sobelHorizontal, sobelVertical,
-            transposeImage1, transposeImage2, image->width, image->height,
-            Parameters::getInstance().getGaussianFilterNumBlock(), Parameters::getInstance().getGaussianFilterNumThread(),
-            Parameters::getInstance().getToGrayScaleNumBlock(), Parameters::getInstance().getToGrayScaleNumThread(),
-            stream);
+                               transposeImage1, transposeImage2, image->width, image->height,
+                               Parameters::getInstance().getConvolutionKernelNumBlock(),
+                               Parameters::getInstance().getConvolutionKernelNumThread(),
+                               Parameters::getInstance().getLinearKernelNumBlock(),
+                               Parameters::getInstance().getLinearKernelNumThread(),
+                               stream);
 
     // Non maximum suppression
     CudaInterface::nonMaximumSuppression(gaussianImageGpu, edgeGradient, edgeDirection, image->width, image->height,
-            Parameters::getInstance().getToGrayScaleNumBlock(), Parameters::getInstance().getToGrayScaleNumThread(), stream);
+                                         Parameters::getInstance().getLinearKernelNumBlock(),
+                                         Parameters::getInstance().getLinearKernelNumThread(), stream);
 
 
     cudaMemcpyAsync(imageSource, gaussianImageGpu,  image->width * image->height * sizeof(Pixel), cudaMemcpyDeviceToHost, stream);
