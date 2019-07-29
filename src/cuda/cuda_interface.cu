@@ -243,14 +243,10 @@ double CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int widt
     return time;
 }
 
-void CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int width, int height, float *gaussianMask,
+void CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, Pixel *transposeImage, int width, int height, float *gaussianMask,
                                      int maskDim, int numBlocks, int numThread, cudaStream_t &stream) {
     // Alloc the constant memory
     cudaMemcpyToSymbolAsync(maskConstant, gaussianMask, maskDim * sizeof(float), 0, cudaMemcpyHostToDevice, stream);
-
-    // Alloc device memory to put the transpose image
-    Pixel *transposeImage;
-    cudaMalloc(&transposeImage, width * height * sizeof(Pixel));
 
     int sharedMemory = ((width * height) / (numBlocks * numThread) + 1) * numThread + maskDim - 1;
 
@@ -258,9 +254,6 @@ void CudaInterface::gaussianFilter(Pixel *destination, Pixel *source, int width,
     gaussian_filter_horizontal<<<numBlocks, numThread, sharedMemory * sizeof(Pixel), stream>>>(transposeImage, source, width, height, maskDim);
     // Applying the second horizontal gaussian filter
     gaussian_filter_horizontal<<<numBlocks, numThread, sharedMemory * sizeof(Pixel), stream>>>(destination, transposeImage, height, width, maskDim);
-
-    cudaStreamSynchronize(stream);
-    cudaFree(transposeImage);
 }
 
 // The sobel filter requires two bi-dimensional convolution, one horizontal and one vertical
@@ -468,6 +461,24 @@ double CudaInterface::sobelFilter(float *edgeGradient, int *edgeDirection, Pixel
     return time;
 }
 
+void CudaInterface::sobelFilter(float *edgeGradient, int *edgeDirection, Pixel *source, float *sobelHorizontal,
+                                float *sobelVertical, float *transposeImage1, float * transposeImage2,
+                                int width, int height, int numBlocksConvolution, int numThreadConvolution,
+                                int numBlockLinear, int numThreadLinear, cudaStream_t &stream) {
+
+    int sharedMemory = ((width * height) / (numBlocksConvolution * numThreadConvolution) + 1) * numThreadConvolution + 2;
+
+    // Horizontal convolution
+    sobel_convolution_one<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel), stream>>>(transposeImage1, source, 1, width, height);
+    sobel_convolution_two<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel), stream>>>(sobelHorizontal, transposeImage1, 2, height, width);
+
+    sobel_convolution_one<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel), stream>>>(transposeImage2, source, 2, width, height);
+    sobel_convolution_two<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel), stream>>>(sobelVertical, transposeImage2, 1, height, width);
+
+    edge_gradient_direction<<<numBlockLinear, numThreadLinear, 0, stream>>>(edgeGradient, edgeDirection, sobelHorizontal, sobelVertical, width, height);
+}
+
+
 __global__ void non_maximum_suppression(Pixel *destination, float *edgeGradient, int *edgeDirection, int width, int height) {
     int imageSize = width * height;
 
@@ -534,4 +545,9 @@ double CudaInterface::nonMaximumSuppression(Pixel *destination, float *edgeGradi
     non_maximum_suppression<<<numBlocks, numThread>>>(destination, edgeGradient, edgeDirection, width, height);
     cudaDeviceSynchronize();
     return Utilities::seconds() - time;
+}
+
+void CudaInterface::nonMaximumSuppression(Pixel *destination, float *edgeGradient, int *edgeDirection, int width,
+                                            int height, int numBlocks, int numThread, cudaStream_t &stream) {
+    non_maximum_suppression<<<numBlocks, numThread, 0, stream>>>(destination, edgeGradient, edgeDirection, width, height);
 }
