@@ -15,6 +15,9 @@ public:
     static float* getGaussianMatrixPinned(int size, float alpha);
 
     static float* getGaussianArrayPinned(int size, float alpha);
+
+    static int* getSobelMaskHorizontal();
+    static int* getSobelMaskVertical();
 };
 
 

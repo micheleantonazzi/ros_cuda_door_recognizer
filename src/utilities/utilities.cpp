@@ -52,3 +52,11 @@ float* Utilities::getGaussianArrayPinned(int size, float alpha) {
 
     return array;
 }
+
+int* Utilities::getSobelMaskHorizontal(){
+    return new int[9]{-1, 0, 1, -2, 0, 2, -1, 0, 1};
+}
+
+int* Utilities::getSobelMaskVertical(){
+    return new int[9]{-1, -2, -1, 0, 0, 0, 1, 2, 1};
+}

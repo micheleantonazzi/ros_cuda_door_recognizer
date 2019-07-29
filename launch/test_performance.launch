@@ -16,47 +16,52 @@
 
     <!-- Number of block used to run the kernel that converts an image to gray scale -->
     <!-- Recommended values:
-          - door_med_res.jpg: 500
+          - door_med_res.jpg: 300
           - door_high_res.jpg: 1024
     -->
-    <arg name="to_gray_scale_num_block" default="500" />
+    <arg name="linear_kernel_num_block" default="300" />
 
     <!-- Number of thread per block used to run the kernel that converts an image to gray scale -->
     <!-- Recommended values:
          - door_med_res.jpg: 256
          - door_high_res.jpg: 1024
     -->
-    <arg name="to_gray_scale_num_thread" default="256" />
+    <arg name="linear_kernel_num_thread" default="256" />
 
     <!-- Number of block used to run the kernel that applies the gaussian filter -->
     <!-- Recommended values:
           - door_med_res.jpg: 300
           - door_high_res.jpg: 2048
     -->
-    <arg name="gaussian_filter_num_block" default="300" />
+    <arg name="convolution_kernel_num_block" default="300" />
 
     <!-- Number of thread per block used to run the kernel that applies the gaussian filter -->
     <!-- Recommended values:
           - door_med_res.jpg: 256
           - door_high_res.jpg: 1024
     -->
-    <arg name="gaussian_filter_num_thread" default="256" />
+    <arg name="convolution_kernel_num_thread" default="256" />
 
     <!-- The path where to put the processed images -->
     <arg name="processed_images_path" default="/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/processed_images/" />
 
     <arg name="gaussian_mask_size" default="5" />
 
-    <arg name="gaussian_alpha" default="0.84" />
+    <!-- The parameter used to calculate the gaussian kernel
+         Recommended values:
+          - door_med_res.jpg: 0.84
+          - door_high_res.jpg: 1.4
+    -->
+    <arg name="gaussian_alpha" default="0.8" />
 
     <node pkg="ros_cuda_door_recognizer" type="test_performance" name="test_performance" output="screen">
         <param name="camera" value="$(arg camera)" />
         <param name="topic" value="$(arg topic)" />
         <param name="image_path" value="$(arg image_path)" />
-        <param name="to_gray_scale_num_block" value="$(arg to_gray_scale_num_block)" />
-        <param name="to_gray_scale_num_thread" value="$(arg to_gray_scale_num_thread)" />
-        <param name="gaussian_filter_num_block" value="$(arg gaussian_filter_num_block)" />
-        <param name="gaussian_filter_num_thread" value="$(arg gaussian_filter_num_thread)" />
+        <param name="linear_kernel_num_block" value="$(arg linear_kernel_num_block)" />
+        <param name="linear_kernel_num_thread" value="$(arg linear_kernel_num_thread)" />
+        <param name="convolution_kernel_num_block" value="$(arg convolution_kernel_num_block)" />
+        <param name="convolution_kernel_num_thread" value="$(arg convolution_kernel_num_thread)" />
         <param name="processed_images_path" value="$(arg processed_images_path)" />
         <param name="gaussian_mask_size" value="$(arg gaussian_mask_size)" />
         <param name="gaussian_alpha" value="$(arg gaussian_alpha)" />

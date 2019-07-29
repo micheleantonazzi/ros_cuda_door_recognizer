@@ -60,8 +60,32 @@ int main(int argc, char **argv){
 
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-gaussian.jpg", imageGaussian);
 
+        // Sobel filter
+        Mat imageSobel(image->getOpenCVImage());
+
+        float *edgeGradient = new float[image->getWidth() * image->getHeight()];
+        int *edgeDirection = new int[image->getWidth() * image->getHeight()];
+
+        time = Utilities::seconds();
+        CpuAlgorithms::getInstance().sobel(edgeGradient, edgeDirection, imageGaussian.data,
+                image->getWidth(), image->getHeight());
+        time = Utilities::seconds() - time;
+        cout << " - apply sobel filter: " << time << "\n";
+
+        time = Utilities::seconds();
+        CpuAlgorithms::getInstance().nonMaximumSuppression(imageSobel.data, edgeGradient, edgeDirection,
+                image->getWidth(), image->getHeight());
+        time = Utilities::seconds() - time;
+        cout << " - non maximum suppression: " << time << "\n";
+
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-sobel.jpg", imageSobel);
+
         delete image;
         delete gaussianFilter;
+        delete edgeDirection;
+        delete edgeGradient;
+
+        cout << endl;
 
         // GPU info
         cudaDeviceProp deviceProp;
@@ -83,10 +107,6 @@ int main(int argc, char **argv){
                 " - height: " << image->getHeight() << "\n" <<
                 "Operations in GPU:\n";
 
-        cout << " - convert to gray scale: " << Parameters::getInstance().getToGrayScaleNumBlock() <<
-                " blocks, " << Parameters::getInstance().getToGrayScaleNumThread() <<
-                " thread per block: ";
-
         int sizeImage = image->getHeight() * image->getWidth();
 
         Pixel *imageSource = CudaInterface::getPixelArray(image->getOpenCVImage().data, image->getWidth(), image->getHeight());
@@ -103,22 +123,20 @@ int main(int argc, char **argv){
         cudaMemcpy(imageSourceGpu, imageSource, sizeImage * sizeof(Pixel), cudaMemcpyHostToDevice);
 
         time = CudaInterface::toGrayScale(destinationGrayScaleGpu, imageSourceGpu, image->getWidth(),
-                image->getHeight(), Parameters::getInstance().getToGrayScaleNumBlock(), Parameters::getInstance().getToGrayScaleNumThread());
+                                          image->getHeight(), Parameters::getInstance().getLinearKernelNumBlock(),
+                                          Parameters::getInstance().getLinearKernelNumThread());
+        cout << " - convert to gray scale: " << time << endl <<
+             "    - " << Parameters::getInstance().getConvolutionKernelNumBlock() <<
+             " blocks, " << Parameters::getInstance().getConvolutionKernelNumThread() <<
+             " thread" << endl;
 
         cudaMemcpy(imageSource, destinationGrayScaleGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
 
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
 
-        cout << time << endl;
-
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-grayscale.jpg", image->getOpenCVImage());
 
         // ----------------- Apply Gaussian filter --------------- //
-
-        cout << " - apply gaussian filter: " << Parameters::getInstance().getGaussianFilterNumBlock() <<
-             " blocks, " << Parameters::getInstance().getGaussianFilterNumThread() <<
-             " thread per block: ";
-
         Pixel *destinationGaussianFilterGpu;
         cudaMalloc(&destinationGaussianFilterGpu, sizeof(Pixel) * sizeImage);
 
@@ -126,36 +144,58 @@ int main(int argc, char **argv){
                                                                  Parameters::getInstance().getGaussianAlpha());
 
         time = CudaInterface::gaussianFilter(destinationGaussianFilterGpu, destinationGrayScaleGpu, image->getWidth(), image->getHeight(),
-                                      gaussianArray, Parameters::getInstance().getGaussianMaskSize(), Parameters::getInstance().getGaussianFilterNumBlock(),
-                                      Parameters::getInstance().getGaussianFilterNumThread());
+                                      gaussianArray, Parameters::getInstance().getGaussianMaskSize(),
+                                             Parameters::getInstance().getConvolutionKernelNumBlock(),
+                                             Parameters::getInstance().getConvolutionKernelNumThread());
+
+        cout << " - apply gaussian filter: " << time << endl <<
+                "    - " << Parameters::getInstance().getConvolutionKernelNumBlock() <<
+                " blocks, " << Parameters::getInstance().getConvolutionKernelNumThread() <<
+                " thread" << endl;
 
         cudaMemcpy(imageSource, destinationGaussianFilterGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
-
-        cout << time << endl;
-
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
-
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-gaussian-filter.jpg", image->getOpenCVImage());
+
+        // Apply sobel filter
+        float *edgeGradientGpu;
+        int *edgeDirectionGpu;
+
+        cudaMalloc(&edgeGradientGpu, image->getWidth() * image->getHeight() * sizeof(float));
+        cudaMalloc(&edgeDirectionGpu, image->getWidth() * image->getHeight() * sizeof(int));
+
+        time = CudaInterface::sobelFilter(edgeGradientGpu, edgeDirectionGpu, destinationGaussianFilterGpu, image->getWidth(), image->getHeight(),
+                                          Parameters::getInstance().getConvolutionKernelNumBlock(),
+                                          Parameters::getInstance().getConvolutionKernelNumThread(),
+                                          Parameters::getInstance().getLinearKernelNumBlock(),
+                                          Parameters::getInstance().getLinearKernelNumThread());
+
+        cout << " - apply sobel filter: " << time << "\n" <<
+                "    - convolution operation: " << Parameters::getInstance().getConvolutionKernelNumBlock() << " blocks, " <<
+                Parameters::getInstance().getConvolutionKernelNumThread() << " thread\n" <<
+                "    - linear operation: " << Parameters::getInstance().getLinearKernelNumBlock() << " blocks, " <<
+                Parameters::getInstance().getLinearKernelNumThread() << " thread" << endl;
+
+        time = CudaInterface::nonMaximumSuppression(destinationGaussianFilterGpu, edgeGradientGpu, edgeDirectionGpu,
+                image->getWidth(), image->getHeight(), Parameters::getInstance().getLinearKernelNumBlock(),
+                                                    Parameters::getInstance().getLinearKernelNumThread());
+
+        cout << " - non maximum suppression: " << time << "\n" <<
+             "    - convolution operation: " << Parameters::getInstance().getConvolutionKernelNumBlock() << " blocks, " <<
+             Parameters::getInstance().getConvolutionKernelNumThread() << " thread\n" <<
+             "    - linear operation: " << Parameters::getInstance().getLinearKernelNumBlock() << " blocks, " <<
+             Parameters::getInstance().getLinearKernelNumThread() << " thread" << endl;
+
+        cudaMemcpy(imageSource, destinationGaussianFilterGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
+        CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-sobel.jpg", image->getOpenCVImage());
 
         cudaFreeHost(imageSource);
         cudaFree(imageSourceGpu);
         cudaFree(destinationGrayScaleGpu);
         cudaFree(destinationGaussianFilterGpu);
         cudaFreeHost(gaussianArray);
-
-        /*float *m = Utilities::getGaussianMatrix(5, 0.8);
-        for (int i = 0; i < 5; ++i) {
-            for (int j = 0; j < 5; ++j) {
-                printf("%.20f ", m[i * 5 + j]);
-            }
-            printf("\n");
-        }
-
-        m = Utilities::getGaussianArray(5, 0.8);
-        for (int i = 0; i < 5; ++i) {
-            printf("%.20f ", m[i]);
-        }
-        printf("\n");
-         */
+        cudaFree(edgeDirectionGpu);
+        cudaFree(edgeGradientGpu);
     }
 }

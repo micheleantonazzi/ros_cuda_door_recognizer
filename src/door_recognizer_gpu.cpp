@@ -12,6 +12,12 @@ using namespace ros;
 
 void readFrame(const sensor_msgs::Image::ConstPtr&, Publisher&);
 
+// Memory in gpu
+Pixel *imageSource, *imageSourceGpu, *grayScaleGpu, *gaussianImageGpu, *transposeImage;
+float *mask, *edgeGradient, *sobelHorizontal, *sobelVertical, *transposeImage1, *transposeImage2;
+int *edgeDirection;
+bool alloc = false;
+
 int main(int argc, char **argv){
 
     ros::init(argc, argv, "services");
@@ -26,52 +32,82 @@ int main(int argc, char **argv){
     Subscriber subscriber = node.subscribe<sensor_msgs::Image>(Parameters::getInstance().getTopic(), 10,
                                                                boost::bind(readFrame, _1, publisherGrayScale));
 
+    mask = Utilities::getGaussianArrayPinned(Parameters::getInstance().getGaussianMaskSize(),
+                                                    Parameters::getInstance().getGaussianAlpha());
+
     while (true){
         spinOnce();
     }
-}
-
-void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGrayScale){
-    int imageSize = image->width * image->height;
-
-    cudaStream_t stream;
-    cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
-
-    Pixel *imageSourceGpu, *grayScaleGpu, *gaussianImageGpu;
-
-    cudaMalloc(&imageSourceGpu, imageSize * sizeof(Pixel));
-    cudaMalloc(&grayScaleGpu, imageSize * sizeof(Pixel));
-    cudaMalloc(&gaussianImageGpu, imageSize * sizeof(Pixel));
-
-    Pixel *imageSource = CudaInterface::getPixelArray(image->data.data(), image->width, image->height);
-
-    // Gray scale
-
-    cudaMemcpyAsync(imageSourceGpu, imageSource, imageSize * sizeof(Pixel), cudaMemcpyHostToDevice, stream);
-
-    CudaInterface::toGrayScale(grayScaleGpu, imageSourceGpu, image->width, image->height,
-            Parameters::getInstance().getToGrayScaleNumBlock(), Parameters::getInstance().getToGrayScaleNumThread(), stream);
-
-    // Gaussian filter
-    float *mask = Utilities::getGaussianArrayPinned(Parameters::getInstance().getGaussianMaskSize(),
-            Parameters::getInstance().getGaussianAlpha());
-
-    CudaInterface::gaussianFilter(gaussianImageGpu, grayScaleGpu, image->width, image->height,
-                                  mask, Parameters::getInstance().getGaussianMaskSize(), Parameters::getInstance().getGaussianFilterNumBlock(),
-                                  Parameters::getInstance().getGaussianFilterNumThread(), stream);
-
-
-    cudaMemcpyAsync(imageSource, gaussianImageGpu, imageSize * sizeof(Pixel), cudaMemcpyDeviceToHost, stream);
-
-    cudaStreamSynchronize(stream);
-
-    CudaInterface::pixelArrayToCharArray((uint8_t*)image->data.data(), imageSource, image->width, image->height);
-    publisherGrayScale.publish(image);
 
     cudaFreeHost(imageSource);
     cudaFree(imageSourceGpu);
     cudaFree(grayScaleGpu);
     cudaFree(gaussianImageGpu);
     cudaFreeHost(mask);
+    cudaFree(transposeImage);
+    cudaFree(edgeGradient);
+    cudaFree(edgeDirection);
+    cudaFree(sobelHorizontal);
+    cudaFree(sobelVertical);
+    cudaFree(transposeImage1);
+    cudaFree(transposeImage2);}
+
+void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGrayScale){
+    if(!alloc){
+        int imageSize = image->width * image->height;
+        cudaMalloc(&imageSourceGpu, imageSize * sizeof(Pixel));
+        cudaMalloc(&grayScaleGpu, imageSize * sizeof(Pixel));
+        cudaMalloc(&gaussianImageGpu, imageSize * sizeof(Pixel));
+        cudaMalloc(&transposeImage, imageSize * sizeof(Pixel));
+        cudaMalloc(&edgeGradient, imageSize * sizeof(float));
+        cudaMalloc(&edgeDirection, imageSize * sizeof(int));
+        cudaMalloc(&sobelHorizontal, imageSize * sizeof(float));
+        cudaMalloc(&sobelVertical, imageSize * sizeof(float));
+        cudaMalloc(&transposeImage1, imageSize * sizeof(float));
+        cudaMalloc(&transposeImage2, imageSize * sizeof(float));
+        alloc = true;
+    }
+
+    cudaStream_t stream;
+    cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+
+    imageSource = CudaInterface::getPixelArray(image->data.data(), image->width, image->height);
+
+    // Gray scale
+    cudaMemcpyAsync(imageSourceGpu, imageSource,  image->width * image->height * sizeof(Pixel), cudaMemcpyHostToDevice, stream);
+
+    CudaInterface::toGrayScale(grayScaleGpu, imageSourceGpu, image->width, image->height,
+                               Parameters::getInstance().getLinearKernelNumBlock(),
+                               Parameters::getInstance().getLinearKernelNumThread(), stream);
+
+    // Gaussian filter
+    CudaInterface::gaussianFilter(gaussianImageGpu, grayScaleGpu, transposeImage, image->width, image->height,
+                                  mask, Parameters::getInstance().getGaussianMaskSize(),
+                                  Parameters::getInstance().getConvolutionKernelNumBlock(),
+                                  Parameters::getInstance().getConvolutionKernelNumThread(), stream);
+
+    // Sobel filter
+    CudaInterface::sobelFilter(edgeGradient, edgeDirection, gaussianImageGpu, sobelHorizontal, sobelVertical,
+                               transposeImage1, transposeImage2, image->width, image->height,
+                               Parameters::getInstance().getConvolutionKernelNumBlock(),
+                               Parameters::getInstance().getConvolutionKernelNumThread(),
+                               Parameters::getInstance().getLinearKernelNumBlock(),
+                               Parameters::getInstance().getLinearKernelNumThread(),
+                               stream);
+
+    // Non maximum suppression
+    CudaInterface::nonMaximumSuppression(gaussianImageGpu, edgeGradient, edgeDirection, image->width, image->height,
+                                         Parameters::getInstance().getLinearKernelNumBlock(),
+                                         Parameters::getInstance().getLinearKernelNumThread(), stream);
+
+
+    cudaMemcpyAsync(imageSource, gaussianImageGpu,  image->width * image->height * sizeof(Pixel), cudaMemcpyDeviceToHost, stream);
+
+    cudaStreamSynchronize(stream);
+
+    CudaInterface::pixelArrayToCharArray((uint8_t*)image->data.data(), imageSource, image->width, image->height);
+    publisherGrayScale.publish(image);
+
     cudaStreamDestroy(stream);
+    cudaFreeHost(imageSource);
 }

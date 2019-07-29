@@ -28,17 +28,17 @@ private:
     // If you don't use the camera specify the image's path
     string image_path;
 
-    // Number of block used to run the kernel that convert an image to gray scale
-    int to_gray_scale_num_block;
+    // Number of block used to run a linear kernel
+    int linear_kernel_num_block;
 
-    // Number of thread per block used to run the kernel that convert an image to gray scale
-    int to_gray_scale_num_thread;
+    // Number of thread per block used to run a linear kernel
+    int linear_kernel_num_thread;
 
-    // Number of blocks used to run the kernel that applies the gaussian filter
-    int gaussian_filter_num_block;
+    // Number of blocks used to run a convolution kernel
+    int convolution_kernel_num_block;
 
-    // Number of thread per block used to run the kernel that applies the gaussian filter
-    int gaussian_filter_num_thread;
+    // Number of thread per block used to run a convolution kernel
+    int convolution_kernel_num_thread;
 
     // The path where to put the processed images
     string processed_images_path;
@@ -62,13 +62,13 @@ public:
 
     string getTopic();
 
-    int getToGrayScaleNumBlock();
+    int getLinearKernelNumBlock();
 
-    int getToGrayScaleNumThread();
+    int getLinearKernelNumThread();
 
-    int getGaussianFilterNumBlock();
+    int getConvolutionKernelNumBlock();
 
-    int getGaussianFilterNumThread();
+    int getConvolutionKernelNumThread();
 
     string getProcessedImagesPath();
 
