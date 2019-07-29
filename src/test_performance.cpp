@@ -107,10 +107,6 @@ int main(int argc, char **argv){
                 " - height: " << image->getHeight() << "\n" <<
                 "Operations in GPU:\n";
 
-        cout << " - convert to gray scale: " << Parameters::getInstance().getLinearKernelNumBlock() <<
-             " blocks, " << Parameters::getInstance().getLinearKernelNumThread() <<
-             " thread per block: ";
-
         int sizeImage = image->getHeight() * image->getWidth();
 
         Pixel *imageSource = CudaInterface::getPixelArray(image->getOpenCVImage().data, image->getWidth(), image->getHeight());
@@ -129,21 +125,18 @@ int main(int argc, char **argv){
         time = CudaInterface::toGrayScale(destinationGrayScaleGpu, imageSourceGpu, image->getWidth(),
                                           image->getHeight(), Parameters::getInstance().getLinearKernelNumBlock(),
                                           Parameters::getInstance().getLinearKernelNumThread());
+        cout << " - convert to gray scale: " << time << endl <<
+             "    - " << Parameters::getInstance().getConvolutionKernelNumBlock() <<
+             " blocks, " << Parameters::getInstance().getConvolutionKernelNumThread() <<
+             " thread" << endl;
 
         cudaMemcpy(imageSource, destinationGrayScaleGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
 
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
 
-        cout << time << endl;
-
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-grayscale.jpg", image->getOpenCVImage());
 
         // ----------------- Apply Gaussian filter --------------- //
-
-        cout << " - apply gaussian filter: " << Parameters::getInstance().getConvolutionKernelNumBlock() <<
-             " blocks, " << Parameters::getInstance().getConvolutionKernelNumThread() <<
-             " thread per block: ";
-
         Pixel *destinationGaussianFilterGpu;
         cudaMalloc(&destinationGaussianFilterGpu, sizeof(Pixel) * sizeImage);
 
@@ -155,7 +148,10 @@ int main(int argc, char **argv){
                                              Parameters::getInstance().getConvolutionKernelNumBlock(),
                                              Parameters::getInstance().getConvolutionKernelNumThread());
 
-        cout << time << endl;
+        cout << " - apply gaussian filter: " << time << endl <<
+                "    - " << Parameters::getInstance().getConvolutionKernelNumBlock() <<
+                " blocks, " << Parameters::getInstance().getConvolutionKernelNumThread() <<
+                " thread" << endl;
 
         cudaMemcpy(imageSource, destinationGaussianFilterGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
@@ -174,13 +170,21 @@ int main(int argc, char **argv){
                                           Parameters::getInstance().getLinearKernelNumBlock(),
                                           Parameters::getInstance().getLinearKernelNumThread());
 
-        cout << " - apply sobel filter: " << time << endl;
+        cout << " - apply sobel filter: " << time << "\n" <<
+                "    - convolution operation: " << Parameters::getInstance().getConvolutionKernelNumBlock() << " blocks, " <<
+                Parameters::getInstance().getConvolutionKernelNumThread() << " thread\n" <<
+                "    - linear operation: " << Parameters::getInstance().getLinearKernelNumBlock() << " blocks, " <<
+                Parameters::getInstance().getLinearKernelNumThread() << " thread" << endl;
 
         time = CudaInterface::nonMaximumSuppression(destinationGaussianFilterGpu, edgeGradientGpu, edgeDirectionGpu,
                 image->getWidth(), image->getHeight(), Parameters::getInstance().getLinearKernelNumBlock(),
                                                     Parameters::getInstance().getLinearKernelNumThread());
 
-        cout << " - non maximum subpression: " << time << endl;
+        cout << " - non maximum suppression: " << time << "\n" <<
+             "    - convolution operation: " << Parameters::getInstance().getConvolutionKernelNumBlock() << " blocks, " <<
+             Parameters::getInstance().getConvolutionKernelNumThread() << " thread\n" <<
+             "    - linear operation: " << Parameters::getInstance().getLinearKernelNumBlock() << " blocks, " <<
+             Parameters::getInstance().getLinearKernelNumThread() << " thread" << endl;
 
         cudaMemcpy(imageSource, destinationGaussianFilterGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
