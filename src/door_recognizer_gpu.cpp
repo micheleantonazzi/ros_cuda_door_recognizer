@@ -109,4 +109,5 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGr
     publisherGrayScale.publish(image);
 
     cudaStreamDestroy(stream);
+    cudaFreeHost(imageSource);
 }
