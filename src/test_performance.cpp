@@ -189,20 +189,5 @@ int main(int argc, char **argv){
         cudaFreeHost(gaussianArray);
         cudaFree(edgeDirectionGpu);
         cudaFree(edgeGradientGpu);
-
-        /*float *m = Utilities::getGaussianMatrix(5, 0.8);
-        for (int i = 0; i < 5; ++i) {
-            for (int j = 0; j < 5; ++j) {
-                printf("%.20f ", m[i * 5 + j]);
-            }
-            printf("\n");
-        }
-
-        m = Utilities::getGaussianArray(5, 0.8);
-        for (int i = 0; i < 5; ++i) {
-            printf("%.20f ", m[i]);
-        }
-        printf("\n");
-         */
     }
 }
