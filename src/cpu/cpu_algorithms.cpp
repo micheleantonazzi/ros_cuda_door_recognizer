@@ -173,28 +173,11 @@ void CpuAlgorithms::corner(unsigned char *destination, unsigned char *source, un
             *(sobelVertical + i * width + j) = value;
         }
     }
-    float *edgeDirection = new float[width * height];
-    for (int i = 0; i < height; ++i) {
-        for (int j = 0; j < width; ++j) {
-            float dir = atan2(sobelVertical[i * width + j], sobelHorizontal[i * width + j]) * 180 / M_PI;
-            if (dir < 0)
-                dir += 180;
-            if(dir > 22.5 && dir <= 67.5)
-                dir = 45;
-            else if(dir > 67.5 && dir <= 112.5)
-                dir = 90;
-            else if(dir > 112.5 && dir <= 157.5)
-                dir = 135;
-            else
-                dir = 0;
-
-            *(edgeDirection + i * width + j) = dir;
-        }
-    }
 
     float *sobelHorizontal2 = new float[width * height];
     float *sobelVertical2 = new float[width * height];
     float *sobelHorizontalVertical = new float[width * height];
+
     // corner detection
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
@@ -249,7 +232,7 @@ void CpuAlgorithms::corner(unsigned char *destination, unsigned char *source, un
 
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
-            int dir = *(edgeDirection + i * width + j);
+            //int dir = *(edgeDirection + i * width + j);
             float first = 0;
             float second = 0;
             float max = true;
@@ -267,7 +250,7 @@ void CpuAlgorithms::corner(unsigned char *destination, unsigned char *source, un
             }
             */
 
-            if(currentValue > 100000000000){
+            if(currentValue > 10000){
                 if(!max)
                     currentValue = 0;
                 else
