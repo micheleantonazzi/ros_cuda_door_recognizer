@@ -174,6 +174,8 @@ void CpuAlgorithms::corner(unsigned char *destination, unsigned char *source, un
         }
     }
 
+    double time = Utilities::seconds();
+
     float *sobelHorizontal2 = new float[width * height];
     float *sobelVertical2 = new float[width * height];
     float *sobelHorizontalVertical = new float[width * height];
@@ -228,11 +230,10 @@ void CpuAlgorithms::corner(unsigned char *destination, unsigned char *source, un
         }
     }
 
-    float *cornersSuppressed = new float[width * height];
+    float *cornerSuppressed = new float[width * height];
 
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
-            //int dir = *(edgeDirection + i * width + j);
             float first = 0;
             float second = 0;
             float max = true;
@@ -259,13 +260,13 @@ void CpuAlgorithms::corner(unsigned char *destination, unsigned char *source, un
                 currentValue = 0;
 
 
-            *(cornersSuppressed + (i * width + j)) = currentValue;
+            *(cornerSuppressed + (i * width + j)) = currentValue;
         }
     }
 
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
-            float r = *(cornersSuppressed + i * width + j);
+            float r = *(cornerSuppressed + i * width + j);
             unsigned  char final;
             if(r == 0){
                 final = *(imageSobel + (i * width + j)*3);
@@ -287,6 +288,14 @@ void CpuAlgorithms::corner(unsigned char *destination, unsigned char *source, un
     delete(sobelMaskVertical);
     delete(sobelHorizontal);
     delete(sobelVertical);
+    delete(cornerSuppressed);
+    delete(corners);
+    delete(sobelHorizontal2);
+    delete(sobelHorizontal2Sum);
+    delete(sobelVertical2);
+    delete(sobelVertical2Sum);
+    delete(sobelHorizontalVertical);
+    delete(sobelHorizontalVerticalSum);
 }
 
 void CpuAlgorithms::nonMaximumSuppression(unsigned char *destination, float *edgeGradient, int *edgeDirection, int width, int height) {
