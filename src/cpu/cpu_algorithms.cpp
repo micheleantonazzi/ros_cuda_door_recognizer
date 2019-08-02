@@ -133,7 +133,7 @@ void CpuAlgorithms::sobel(float *edgeGradient, int *edgeDirection, unsigned char
     delete(sobelVertical);
 }
 
-void CpuAlgorithms::corner(unsigned char *destination, unsigned char *source, unsigned char *imageSobel, int width, int height) {
+void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, unsigned char *imageSobel, int width, int height) {
     int maskDim = 3;
     int *sobelMaskHorizontal = Utilities::getSobelMaskHorizontal();
 

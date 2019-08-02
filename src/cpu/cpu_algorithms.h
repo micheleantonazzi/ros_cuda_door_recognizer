@@ -22,7 +22,7 @@ public:
     void gaussianFilter(unsigned char *destination, unsigned char *source, float *mask, int width, int height, int maskDim);
     void sobel(float *edgeGradient, int *edgeDirection, unsigned char *source, int width, int height);
     void nonMaximumSuppression(unsigned char *destination, float *edgeGradient, int *edgeDirection, int width, int height);
-    void corner(unsigned char *destination, unsigned char *source, unsigned char *imageSobel, int width, int height);
+    void harris(unsigned char *destination, unsigned char *source, unsigned char *imageSobel, int width, int height);
 };
 
 
