@@ -82,7 +82,13 @@ int main(int argc, char **argv){
 
         // Harris corner detector
         Mat corner(imageSobel);
+
+        time = Utilities::seconds();
         CpuAlgorithms::getInstance().corner(corner.data, imageGaussian.data, imageSobel.data, image->getWidth(), image->getHeight());
+        time = Utilities::seconds() - time;
+
+        cout << " - Harris corner detection: " << time << "\n";
+
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner.jpg", corner);
 
         /*Image src;
