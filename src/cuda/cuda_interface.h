@@ -57,6 +57,9 @@ public:
 
     static void nonMaximumSuppression(Pixel *destination, float *edgeGradient, int *edgeDirection, int width, int height,
                                         int numBlocks, int numThread, cudaStream_t &stream);
+
+    static double harris(Pixel *destination, Pixel *source, int width, int height,
+            int numBlocksConvolution, int numThreadConvolution, int numBlockLinear, int numThreadLinear);
 };
 
 
