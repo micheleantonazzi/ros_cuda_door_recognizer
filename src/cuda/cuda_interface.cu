@@ -66,21 +66,18 @@ __global__ void to_gray_scale(unsigned char *destination, unsigned char *source,
 
     int threadId = blockDim.x * blockIdx.x + threadIdx.x;
 
-    if (threadId * valuesPerThread < imageSize){
+    // Move the pointer to the correct position
+    source += threadId * valuesPerThread;
+    destination += threadId * valuesPerThread;
 
-        // Move the pointer to the correct position
-        source += threadId * valuesPerThread;
-        destination += threadId * valuesPerThread;
+    int start = threadId * valuesPerThread;
 
-        int start = threadId * valuesPerThread;
+    for(int i = 0; i < valuesPerThread && start + i < imageSize; i += 3){
+        unsigned char average = (*(source++) + *(source++) + *(source++)) / 3;
+        *(destination++) = average;
+        *(destination++) = average;
+        *(destination++) = average;
 
-        for(int i = 0; i < valuesPerThread && start + i < imageSize; i += 3){
-            unsigned char average = (*(source++) + *(source++) + *(source++)) / 3;
-            *(destination++) = average;
-            *(destination++) = average;
-            *(destination++) = average;
-
-        }
     }
 }
 
@@ -161,7 +158,7 @@ double CudaInterface::toGrayScale(Pixel *destination, Pixel *source, int width, 
 }
 
 
-__constant__ float maskConstant[10];
+__constant__ float maskConstant[5];
 
 __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, int width, int height,
                                 int maskDim){
@@ -386,36 +383,31 @@ __global__ void edge_gradient_direction(float *edgeGradient, int *edgeDirection,
 
     int valuesPerThread = (imageSize / threadTot) + 1;
 
-    int threadId = blockDim.x * blockIdx.x + threadIdx.x;
+    int start = blockDim.x * blockIdx.x * valuesPerThread;
 
-    if (threadId * valuesPerThread < imageSize) {
+    for (int i = 0; i < valuesPerThread && start + i * blockDim.x + threadIdx.x < imageSize; i++) {
+        int pos = start + i * blockDim.x + threadIdx.x;
+        float x = sobelHorizontal[pos];
+        float y = sobelVertical[pos];
 
-        int start = blockDim.x * blockIdx.x * valuesPerThread;
+        // The function pow isn't used to improve the performance, in fact the float operation is faster than the double ones
+        float gradient = sqrt(x * x + y * y);
+        edgeGradient[pos] = gradient;
 
-        for (int i = 0; i < valuesPerThread && start + i * blockDim.x + threadIdx.x < imageSize; i++) {
-            int pos = start + i * blockDim.x + threadIdx.x;
-            float x = sobelHorizontal[pos];
-            float y = sobelVertical[pos];
+        // All values are cart to float in order to improve the performance, in fact the float operation is faster than the double ones
+        float dir = (float) atan2(y, x) * 180 / (float) M_PI;
 
-            // The function pow isn't used to improve the performance, in fact the float operation is faster than the double ones
-            float gradient = sqrt(x * x + y * y);
-            edgeGradient[pos] = gradient;
-
-            // All values are cart to float in order to improve the performance, in fact the float operation is faster than the double ones
-            float dir = (float) atan2(y, x) * 180 / (float) M_PI;
-
-            if (dir < 0)
-                dir += 180;
-            if (dir > 22.5 && dir <= 67.5)
-                dir = 45;
-            else if (dir > 67.5 && dir <= 112.5)
-                dir = 90;
-            else if (dir > 112.5 && dir <= 157.5)
-                dir = 135;
-            else
-                dir = 0;
-            edgeDirection[pos] = dir;
-        }
+        if (dir < 0)
+            dir += 180;
+        if (dir > 22.5 && dir <= 67.5)
+            dir = 45;
+        else if (dir > 67.5 && dir <= 112.5)
+            dir = 90;
+        else if (dir > 112.5 && dir <= 157.5)
+            dir = 135;
+        else
+            dir = 0;
+        edgeDirection[pos] = dir;
     }
 }
 
@@ -486,55 +478,50 @@ __global__ void non_maximum_suppression(Pixel *destination, float *edgeGradient,
 
     int valuesPerThread = (imageSize / threadTot) + 1;
 
-    int threadId = blockDim.x * blockIdx.x + threadIdx.x;
+    int start = blockDim.x * blockIdx.x * valuesPerThread;
 
-    if (threadId * valuesPerThread < imageSize) {
+    for (int i = 0; i < valuesPerThread && start + i * blockDim.x + threadIdx.x < imageSize; i++) {
+        int pos = start + i * blockDim.x + threadIdx.x;
+        int x = pos / width;
+        int y = pos % width;
 
-        int start = blockDim.x * blockIdx.x * valuesPerThread;
+        int dir = edgeDirection[pos];
+        float first = 0;
+        float second = 0;
 
-        for (int i = 0; i < valuesPerThread && start + i * blockDim.x + threadIdx.x < imageSize; i++) {
-            int pos = start + i * blockDim.x + threadIdx.x;
-            int x = pos / width;
-            int y = pos % width;
-
-            int dir = edgeDirection[pos];
-            float first = 0;
-            float second = 0;
-
-            if (dir == 0) {
-                if (y - 1 >= 0)
-                    first = *(edgeGradient + x * width + y - 1);
-                if (y + 1 < width)
-                    second = *(edgeGradient + x * width + y + 1);
-            } else if (dir == 90) {
-                if (x - 1 >= 0)
-                    first = *(edgeGradient + (x - 1) * width + y);
-                if (x + 1 < height)
-                    second = *(edgeGradient + (x + 1) * width + y);
-            } else if (dir == 45) {
-                if (x - 1 >= 0 && y + 1 < width)
-                    first = *(edgeGradient + (x - 1) * width + y + 1);
-                if (x + 1 < height && y - 1 >= 0)
-                    second = *(edgeGradient + (x + 1) * width + y - 1);
-            } else if (dir == 135) {
-                if (x + 1 < height && y + 1 < width)
-                    first = *(edgeGradient + (x + 1) * width + y + 1);
-                if (x - 1 >= 0 && y - 1 >= 0)
-                    second = *(edgeGradient + (x - 1) * width + y - 1);
-            }
-
-            float currentValue = edgeGradient[pos];
-
-            if (!(currentValue >= first && currentValue >= second))
-                currentValue = 0;
-            unsigned char finalChar = 0;
-
-            if (currentValue > 50)
-                finalChar = 255;
-
-            float final = (finalChar << 16) + (finalChar << 8) + finalChar;
-            destination[pos] = final;
+        if (dir == 0) {
+            if (y - 1 >= 0)
+                first = *(edgeGradient + x * width + y - 1);
+            if (y + 1 < width)
+                second = *(edgeGradient + x * width + y + 1);
+        } else if (dir == 90) {
+            if (x - 1 >= 0)
+                first = *(edgeGradient + (x - 1) * width + y);
+            if (x + 1 < height)
+                second = *(edgeGradient + (x + 1) * width + y);
+        } else if (dir == 45) {
+            if (x - 1 >= 0 && y + 1 < width)
+                first = *(edgeGradient + (x - 1) * width + y + 1);
+            if (x + 1 < height && y - 1 >= 0)
+                second = *(edgeGradient + (x + 1) * width + y - 1);
+        } else if (dir == 135) {
+            if (x + 1 < height && y + 1 < width)
+                first = *(edgeGradient + (x + 1) * width + y + 1);
+            if (x - 1 >= 0 && y - 1 >= 0)
+                second = *(edgeGradient + (x - 1) * width + y - 1);
         }
+
+        float currentValue = edgeGradient[pos];
+
+        if (!(currentValue >= first && currentValue >= second))
+            currentValue = 0;
+        unsigned char finalChar = 0;
+
+        if (currentValue > 50)
+            finalChar = 255;
+
+        float final = (finalChar << 16) + (finalChar << 8) + finalChar;
+        destination[pos] = final;
     }
 }
 
