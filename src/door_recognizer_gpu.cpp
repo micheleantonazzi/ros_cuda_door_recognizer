@@ -83,14 +83,14 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGr
     // Gaussian filter
     CudaInterface::gaussianFilter(gaussianImageGpu, grayScaleGpu, transposeImage, image->width, image->height,
                                   mask, Parameters::getInstance().getGaussianMaskSize(),
-                                  Parameters::getInstance().getConvolutionKernelNumBlock(),
-                                  Parameters::getInstance().getConvolutionKernelNumThread(), stream);
+                                  Parameters::getInstance().getConvolutionOneDimKernelNumBlock(),
+                                  Parameters::getInstance().getConvolutionOneDimKernelNumThread(), stream);
 
     // Sobel filter
     CudaInterface::sobelFilter(edgeGradient, edgeDirection, gaussianImageGpu, sobelHorizontal, sobelVertical,
                                transposeImage1, transposeImage2, image->width, image->height,
-                               Parameters::getInstance().getConvolutionKernelNumBlock(),
-                               Parameters::getInstance().getConvolutionKernelNumThread(),
+                               Parameters::getInstance().getConvolutionOneDimKernelNumBlock(),
+                               Parameters::getInstance().getConvolutionOneDimKernelNumThread(),
                                Parameters::getInstance().getLinearKernelNumBlock(),
                                Parameters::getInstance().getLinearKernelNumThread(),
                                stream);

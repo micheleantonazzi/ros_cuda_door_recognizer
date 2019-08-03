@@ -14,33 +14,47 @@
     -->
     <arg name="image_path" default="/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/test/door_med_res.jpg" />
 
-    <!-- Number of block used to run the kernel that converts an image to gray scale -->
+    <!-- Number of block used to run a linear kernel -->
     <!-- Recommended values:
           - door_med_res.jpg: 300
           - door_high_res.jpg: 1024
     -->
     <arg name="linear_kernel_num_block" default="300" />
 
-    <!-- Number of thread per block used to run the kernel that converts an image to gray scale -->
+    <!-- Number of thread per block used to run a linear kernel -->
     <!-- Recommended values:
          - door_med_res.jpg: 256
          - door_high_res.jpg: 1024
     -->
     <arg name="linear_kernel_num_thread" default="256" />
 
-    <!-- Number of block used to run the kernel that applies the gaussian filter -->
+    <!-- Number of block used to run a one dimensional convolution kernel -->
     <!-- Recommended values:
           - door_med_res.jpg: 300
           - door_high_res.jpg: 2048
     -->
-    <arg name="convolution_kernel_num_block" default="300" />
+    <arg name="convolution_one_dim_kernel_num_block" default="300" />
 
-    <!-- Number of thread per block used to run the kernel that applies the gaussian filter -->
+    <!-- Number of thread per block used to run a one dimensional convolution kernel -->
     <!-- Recommended values:
           - door_med_res.jpg: 256
           - door_high_res.jpg: 1024
     -->
-    <arg name="convolution_kernel_num_thread" default="256" />
+    <arg name="convolution_one_dim_kernel_num_thread" default="256" />
+
+    <!-- Number of blocks used to run the a two dimensional convolution kernel -->
+    <!-- Recommended values:
+          - door_med_res.jpg: 300
+          - door_high_res.jpg: 5000
+    -->
+    <arg name="convolution_two_dim_kernel_num_block" default="300" />
+
+    <!-- Number of thread per blocks used to run the a two dimensional convolution kernel -->
+    <!-- Recommended values:
+          - door_med_res.jpg: 256
+          - door_high_res.jpg: 512
+    -->
+    <arg name="convolution_two_dim_kernel_num_thread" default="256" />
 
     <!-- The path where to put the processed images -->
     <arg name="processed_images_path" default="/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/processed_images/" />
@@ -60,8 +74,10 @@
         <param name="image_path" value="$(arg image_path)" />
         <param name="linear_kernel_num_block" value="$(arg linear_kernel_num_block)" />
         <param name="linear_kernel_num_thread" value="$(arg linear_kernel_num_thread)" />
-        <param name="convolution_kernel_num_block" value="$(arg convolution_kernel_num_block)" />
-        <param name="convolution_kernel_num_thread" value="$(arg convolution_kernel_num_thread)" />
+        <param name="convolution_one_dim_kernel_num_block" value="$(arg convolution_one_dim_kernel_num_block)" />
+        <param name="convolution_one_dim_kernel_num_thread" value="$(arg convolution_one_dim_kernel_num_thread)" />
+        <param name="convolution_two_dim_kernel_num_block" value="$(arg convolution_two_dim_kernel_num_block)" />
+        <param name="convolution_two_dim_kernel_num_thread" value="$(arg convolution_two_dim_kernel_num_thread)" />
         <param name="processed_images_path" value="$(arg processed_images_path)" />
         <param name="gaussian_mask_size" value="$(arg gaussian_mask_size)" />
         <param name="gaussian_alpha" value="$(arg gaussian_alpha)" />

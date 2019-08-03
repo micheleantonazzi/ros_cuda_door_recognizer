@@ -644,7 +644,7 @@ __global__ void harris_final_combination(Pixel *destination, float *sobelHorizon
 
         float value = (x * y - xy * xy) - 0.06f * ((x + y) * (x + y));
 
-        if(value > 10000000)
+        if(value > 100000000)
             *(destination + pos) = 255;
 
     }
@@ -692,7 +692,7 @@ double CudaInterface::harris(Pixel *destination, Pixel *source, int width, int h
     cudaEventRecord(verticalEnd, stream);
 
     cudaStreamWaitEvent(0, verticalEnd, 0);
-    print<<<1, 1>>>(sobelHorizontal, width, height);
+
     harris_matrix<<<numBlockLinear, numThreadLinear>>>(sobelHorizontal, sobelVertical, sobelHorizontalVertical, width, height);
 
     sharedMemory = ((width * height) / (numBlocksConvolution * numThreadConvolution) + 1) * numThreadConvolution * 3 + 6;
@@ -700,8 +700,6 @@ double CudaInterface::harris(Pixel *destination, Pixel *source, int width, int h
     harris_matrix_sum<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(float)>>>(sobelHorizontalSum, sobelHorizontal, width, height);
     harris_matrix_sum<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(float)>>>(sobelVerticalSum, sobelVertical, width, height);
     harris_matrix_sum<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(float)>>>(sobelHorizontalVerticalSum, sobelHorizontalVertical, width, height);
-
-    print<<<1, 1>>>(sobelHorizontal, width, height);
 
     harris_final_combination<<<numBlockLinear, numThreadLinear>>>(destination, sobelHorizontalSum, sobelVerticalSum, sobelHorizontalVerticalSum, width, height);
 

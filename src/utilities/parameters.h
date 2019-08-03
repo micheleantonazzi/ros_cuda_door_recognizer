@@ -34,11 +34,17 @@ private:
     // Number of thread per block used to run a linear kernel
     int linear_kernel_num_thread;
 
-    // Number of blocks used to run a convolution kernel
-    int convolution_kernel_num_block;
+    // Number of blocks used to run a one dimensional convolution kernel
+    int convolution_one_dim_kernel_num_block;
 
-    // Number of thread per block used to run a convolution kernel
-    int convolution_kernel_num_thread;
+    // Number of thread per block used to run a one dimensional convolution kernel
+    int convolution_one_dim_kernel_num_thread;
+
+    // Number of blocks used to run a two dimensional convolution kernel
+    int convolution_two_dim_kernel_num_block;
+
+    // Number of thread per block used to run a two dimensional convolution kernel
+    int convolution_two_dim_kernel_num_thread;
 
     // The path where to put the processed images
     string processed_images_path;
@@ -66,9 +72,13 @@ public:
 
     int getLinearKernelNumThread();
 
-    int getConvolutionKernelNumBlock();
+    int getConvolutionOneDimKernelNumBlock();
 
-    int getConvolutionKernelNumThread();
+    int getConvolutionOneDimKernelNumThread();
+
+    int getConvolutionTwoDimKernelNumBlock();
+
+    int getConvolutionTwoDimKernelNumThread();
 
     string getProcessedImagesPath();
 

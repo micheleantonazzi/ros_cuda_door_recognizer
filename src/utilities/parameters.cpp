@@ -22,12 +22,14 @@ void Parameters::getValues() {
     NodeHandle nodeHandle("~");
 
     nodeHandle.param<bool>("camera", this->camera, false);
-    nodeHandle.param<string>("image_path", this->image_path, DOOR_MED_RES);
+    nodeHandle.param<string>("image_path", this->image_path, "/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/test/door_med_res.jpg");
     nodeHandle.param<string>("topic", this->topic, CAMERA_TOPIC);
     nodeHandle.param<int>("linear_kernel_num_block", this->linear_kernel_num_block, 300);
     nodeHandle.param<int>("linear_kernel_num_thread", this->linear_kernel_num_thread, 256);
-    nodeHandle.param<int>("convolution_kernel_num_block", this->convolution_kernel_num_block, 300);
-    nodeHandle.param<int>("convolution_kernel_num_thread", this->convolution_kernel_num_thread, 256);
+    nodeHandle.param<int>("convolution_one_dim_kernel_num_block", this->convolution_one_dim_kernel_num_block, 300);
+    nodeHandle.param<int>("convolution_one_dim_kernel_num_thread", this->convolution_one_dim_kernel_num_thread, 256);
+    nodeHandle.param<int>("convolution_two_dim_kernel_num_block", this->convolution_two_dim_kernel_num_block, 300);
+    nodeHandle.param<int>("convolution_two_dim_kernel_num_thread", this->convolution_two_dim_kernel_num_thread, 256);
     nodeHandle.param<string>("processed_images_path", this->processed_images_path, "/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/processed_images/");
     nodeHandle.param<int>("gaussian_mask_size", this->gaussian_mask_size, 5);
     nodeHandle.param<float>("gaussian_alpha", this->gaussian_alpha, 0.8);
@@ -53,13 +55,21 @@ int Parameters::getLinearKernelNumThread() {
     return this->linear_kernel_num_thread;
 }
 
-int Parameters::getConvolutionKernelNumBlock() {
-    return this->convolution_kernel_num_block;
+int Parameters::getConvolutionOneDimKernelNumBlock() {
+    return this->convolution_one_dim_kernel_num_block;
 }
 
-int Parameters::getConvolutionKernelNumThread() {
-    return this->convolution_kernel_num_thread;
+int Parameters::getConvolutionOneDimKernelNumThread() {
+    return this->convolution_one_dim_kernel_num_thread;
 }
+
+int Parameters::getConvolutionTwoDimKernelNumBlock() {
+    return this->convolution_two_dim_kernel_num_block;
+}
+int Parameters::getConvolutionTwoDimKernelNumThread() {
+    return this->convolution_two_dim_kernel_num_thread;
+}
+
 
 string Parameters::getProcessedImagesPath() {
     return this->processed_images_path;
