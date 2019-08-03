@@ -234,10 +234,16 @@ int main(int argc, char **argv){
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-sobel.jpg", image->getOpenCVImage());
 
         // Corner detection
-        CudaInterface::harris(destinationSobelSuppressedGpu, destinationGaussianFilterGpu, image->getWidth(), image->getHeight(),
+        time = CudaInterface::harris(destinationSobelSuppressedGpu, destinationGaussianFilterGpu, image->getWidth(), image->getHeight(),
                               Parameters::getInstance().getConvolutionTwoDimKernelNumBlock(),
                               Parameters::getInstance().getConvolutionTwoDimKernelNumThread(),
                               Parameters::getInstance().getLinearKernelNumBlock(), Parameters::getInstance().getLinearKernelNumThread());
+
+        cout << " - Harris corner detector: " << time << "\n" <<
+             "    - convolution operation: " << Parameters::getInstance().getConvolutionTwoDimKernelNumBlock() << " blocks, " <<
+             Parameters::getInstance().getConvolutionTwoDimKernelNumThread() << " thread\n" <<
+             "    - linear operation: " << Parameters::getInstance().getLinearKernelNumBlock() << " blocks, " <<
+             Parameters::getInstance().getLinearKernelNumThread() << " thread" << endl;
 
         cudaMemcpy(imageSource, destinationSobelSuppressedGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
