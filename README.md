@@ -33,9 +33,7 @@ In order to detect a door, the program uses techniques of image processing. In t
 
     ![Sobel bi-dimensional convolution](images/md/sobel_convolution.png)
 
-    As the Gaussian filter, each bi-dimensional convolution is applied by two one-dimensional convolution in order to improve the performance. In the way, the initial Sobel masks are decomposed as following:
-
-    ![Sobel one-dimensional convolution](images/md/sobel_convolution_one.png)
+    Since the kernel is very small, it isn't necessary to split the 2D convolution in two 1D convolution as in the case of Gaussian filter, it will be slower
 
   * **calculate gradient approximations and gradient's direction:** at each image point, the resulting gradient approximations can be obtained by the gradient magnitude and the direction can be obtained with the arctangent of the corresponding gradient in y and x position. The following image contains these formula:
 
@@ -44,8 +42,8 @@ In order to detect a door, the program uses techniques of image processing. In t
   * **non maximum suppression:** the last step of the Canny filter is to identify an accurate edge value. In fact the edges found with Sobel filter is quite blurred and this technique suppresses all gradient values except the local maximum. The algorithm is quite simple and is composed by two step:
 
     * compare the value of the current pixel with the value of the two adjacent pixel in the edge direction
-    * if the value of the current pixel is the largest the pixel will be preserved, otherwise it will be suppressed (set to 0)
-
+  * if the value of the current pixel is the largest the pixel will be preserved, otherwise it will be suppressed (set to 0)
+  
     After that, the pixel value will set to 255 (white) if its value is higher than a limit, otherwise it will be deleted. This final control is useful to suppress noise-derived edges. This limit is empirically determined.  
 
 ## Performance evaluation and profiling
@@ -151,7 +149,7 @@ Metrics:
 
 #### Image 390 x 520 pixel
 
-Convolution operation (calculate the derivative approximations):
+2D Convolution operation (calculate the derivative approximations):
 
 * Grid dimension: 300 x 1 x 1
 * Block dimension: 256 x 1 x 1
@@ -164,16 +162,16 @@ Linear operation (calculate gradient approximations and gradient's direction):
 Performance:
 
 - **CPU**: 0.02041 second
-- **GPU**: 0.0005240 second (34 times faster)
+- **GPU**: 0.0003569 second (57 times faster)
 
 Metrics:
 
 * **Convolution operation:**
   * **branch efficiency:** 100%
-  * **achieved occupancy:** 0.916
-  * **global memory load efficiency:** 98.2%
-  * **global memory store efficiency:** 12.5%
-  * **shared memory efficiency:** 96%
+  * **achieved occupancy:** 0.963
+  * **global memory load efficiency:** 84.5%
+  * **global memory store efficiency:** 100%
+  * **shared memory efficiency:** 98.8%
 * **Linear operation:**
   - **branch efficiency:** 89.1%
   - **achieved occupancy:** 0.901
@@ -182,10 +180,10 @@ Metrics:
 
 #### Image 3456 x 4608
 
-- Convolution operation (calculate the derivative approximations):
+- 2D Convolution operation (calculate the derivative approximations):
 
-  - Grid dimension: 2048 x 1 x 1
-  - Block dimension: 1024 x 1 x 1
+  - Grid dimension: 20000 x 1 x 1
+  - Block dimension: 256 x 1 x 1
 
   Linear operation (calculate gradient approximations and gradient's direction):
 
@@ -195,16 +193,16 @@ Metrics:
   Performance:
 
   - **CPU**: 1.7694 second
-  - **GPU**: 0.1467 second (12 times faster)
+  - **GPU**: 0.02980 second (59 times faster)
 
   Metrics:
 
   - **Convolution operation:**
     - **branch efficiency:** 100%
-    - **achieved occupancy:** 0.872
-    - **global memory load efficiency:** 99.8%
-    - **global memory store efficiency:** 12.5%
-    - **shared memory efficiency:** 99.6%
+    - **achieved occupancy:** 0.842
+    - **global memory load efficiency:** 98.7%
+    - **global memory store efficiency:** 100%
+    - **shared memory efficiency:** 99.1%
   - **Linear operation:**
     - **branch efficiency:** 89.9%
     - **achieved occupancy:** 0.899
