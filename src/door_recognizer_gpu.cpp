@@ -14,11 +14,11 @@ void readFrame(const sensor_msgs::Image::ConstPtr&, Publisher&);
 
 // Memory in gpu
 Pixel *imageSource, *imageSourceGpu, *grayScaleGpu, *gaussianImageGpu, *transposeImage;
-float *mask, *edgeGradient, *sobelHorizontal, *sobelVertical, *transposeImage1, *transposeImage2;
+float *mask, *edgeGradient, *sobelHorizontal, *sobelVertical;
 int *edgeDirection;
 bool alloc = false;
 
-int main(int argc, char **argv){
+int main(int argc, char **argv) {
 
     ros::init(argc, argv, "services");
     ROS_INFO_STREAM("Started door recognizer node that uses gpu");
@@ -33,9 +33,9 @@ int main(int argc, char **argv){
                                                                boost::bind(readFrame, _1, publisherGrayScale));
 
     mask = Utilities::getGaussianArrayPinned(Parameters::getInstance().getGaussianMaskSize(),
-                                                    Parameters::getInstance().getGaussianAlpha());
+                                             Parameters::getInstance().getGaussianAlpha());
 
-    while (true){
+    while (true) {
         spinOnce();
     }
 
@@ -49,8 +49,7 @@ int main(int argc, char **argv){
     cudaFree(edgeDirection);
     cudaFree(sobelHorizontal);
     cudaFree(sobelVertical);
-    cudaFree(transposeImage1);
-    cudaFree(transposeImage2);}
+}
 
 void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGrayScale){
     if(!alloc){
@@ -63,8 +62,6 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGr
         cudaMalloc(&edgeDirection, imageSize * sizeof(int));
         cudaMalloc(&sobelHorizontal, imageSize * sizeof(float));
         cudaMalloc(&sobelVertical, imageSize * sizeof(float));
-        cudaMalloc(&transposeImage1, imageSize * sizeof(float));
-        cudaMalloc(&transposeImage2, imageSize * sizeof(float));
         alloc = true;
     }
 
@@ -88,9 +85,8 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGr
 
     // Sobel filter
     CudaInterface::sobelFilter(edgeGradient, edgeDirection, gaussianImageGpu, sobelHorizontal, sobelVertical,
-                               transposeImage1, transposeImage2, image->width, image->height,
-                               Parameters::getInstance().getConvolutionOneDimKernelNumBlock(),
-                               Parameters::getInstance().getConvolutionOneDimKernelNumThread(),
+                               image->width, image->height, Parameters::getInstance().getConvolutionTwoDimKernelNumBlock(),
+                               Parameters::getInstance().getConvolutionTwoDimKernelNumThread(),
                                Parameters::getInstance().getLinearKernelNumBlock(),
                                Parameters::getInstance().getLinearKernelNumThread(),
                                stream);
