@@ -162,7 +162,7 @@ __constant__ float maskConstant[5];
 
 __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, int width, int height,
                                 int maskDim){
-    extern __shared__ Pixel smem[];
+    extern __shared__ float smem[];
 
     int pixelPerThread = (width * height) / (gridDim.x * blockDim.x) + 1;
 
@@ -195,23 +195,22 @@ __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, in
 
     __syncthreads();
 
-    for (int i = 0; i < pixelPerThread; ++i) {
+    for (int i = 0; i < pixelPerThread && blockStart + (blockDim.x * i) + threadIdx.x < width * height; ++i) {
 
-        if(blockStart + (blockDim.x * i) + threadIdx.x < width * height){
             float value = 0;
             for (int j = 0; j < maskDim; ++j) {
                 int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
                 if(column + j - maskDim / 2 >= 0 && column + j - maskDim / 2 < width){
-                    float pixel = smem[j + (blockDim.x * i) + threadIdx.x];
-                    value += (unsigned char) pixel * maskConstant[j];
+                    int pixel = smem[j + (blockDim.x * i) + threadIdx.x];
+                    value += ((unsigned char) pixel) * maskConstant[j];
                 }
             }
             int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
             int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
             unsigned char finalChar = value;
-            float final = (finalChar << 16) + (finalChar << 8) + finalChar;
+            int final = (finalChar << 16) + (finalChar << 8) + finalChar;
             *(destination + column * height + row) = final;
-        }
+
     }
 
 }
@@ -268,7 +267,7 @@ __global__ void sobel_convolution_one(float *destination, Pixel *source, int con
     if(constant == 2)
         kernel = (int *) &sobelKernel2;
 
-    extern __shared__ Pixel smem[];
+    extern __shared__ float smem[];
 
     int pixelPerThread = (width * height) / (gridDim.x * blockDim.x) + 1;
 
@@ -301,21 +300,19 @@ __global__ void sobel_convolution_one(float *destination, Pixel *source, int con
 
     __syncthreads();
 
-    for (int i = 0; i < pixelPerThread; ++i) {
+    for (int i = 0; i < pixelPerThread && blockStart + (blockDim.x * i) + threadIdx.x < width * height; ++i) {
 
-        if(blockStart + (blockDim.x * i) + threadIdx.x < width * height){
-            float value = 0;
-            for (int j = 0; j < 3; ++j) {
-                int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
-                if(column + j - 1 >= 0 && column + j - 1 < width){
-                    float pixel = smem[j + (blockDim.x * i) + threadIdx.x];
-                    value += (unsigned char) pixel * kernel[j];
-                }
-            }
-            int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
+        float value = 0;
+        for (int j = 0; j < 3; ++j) {
             int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
-            *(destination + column * height + row) = value;
+            if(column + j - 1 >= 0 && column + j - 1 < width){
+                float pixel = smem[j + (blockDim.x * i) + threadIdx.x];
+                value += (unsigned char) pixel * kernel[j];
+            }
         }
+        int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
+        int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
+        *(destination + column * height + row) = value;
     }
 }
 
@@ -325,7 +322,7 @@ __global__ void sobel_convolution_two(float *destination, float *source, int con
     if(constant == 2)
         kernel = (int *) &sobelKernel2;
 
-    extern __shared__ Pixel smem[];
+    extern __shared__ float smem[];
 
     int pixelPerThread = (width * height) / (gridDim.x * blockDim.x) + 1;
 
@@ -358,21 +355,19 @@ __global__ void sobel_convolution_two(float *destination, float *source, int con
 
     __syncthreads();
 
-    for (int i = 0; i < pixelPerThread; ++i) {
+    for (int i = 0; i < pixelPerThread && blockStart + (blockDim.x * i) + threadIdx.x < width * height; ++i) {
 
-        if(blockStart + (blockDim.x * i) + threadIdx.x < width * height){
-            float value = 0;
-            for (int j = 0; j < 3; ++j) {
-                int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
-                if(column + j - 1 >= 0 && column + j - 1 < width){
-                    float pixel = smem[j + (blockDim.x * i) + threadIdx.x];
-                    value += pixel * kernel[j];
-                }
-            }
-            int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
+        float value = 0;
+        for (int j = 0; j < 3; ++j) {
             int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
-            *(destination + column * height + row) = value;
+            if(column + j - 1 >= 0 && column + j - 1 < width){
+                float pixel = smem[j + (blockDim.x * i) + threadIdx.x];
+                value += pixel * kernel[j];
+            }
         }
+        int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
+        int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
+        *(destination + column * height + row) = value;
     }
 }
 
@@ -419,7 +414,7 @@ __global__ void sobel_convolution(float *destination, Pixel *source, int type, i
     if(type == 2)
         kernel = (int *) &sobelKernelVertical;
 
-    extern __shared__ Pixel smem[];
+    extern __shared__ float smem[];
 
     int pixelPerThread = (width * height) / (gridDim.x * blockDim.x) + 1;
 
@@ -432,7 +427,7 @@ __global__ void sobel_convolution(float *destination, Pixel *source, int type, i
         smem[(pixelPerThread * blockDim.x + 2) * threadIdx.x] = 0;
         if(blockStart / width + ((int) threadIdx.x - 1) >= 0 && blockStart / width + ((int) threadIdx.x - 1) < height &&
            blockStart % width - 1 >= 0){
-            Pixel value = *(source + blockStart + width * ((int) threadIdx.x - 1) - 1);
+            float value = *(source + blockStart + width * ((int) threadIdx.x - 1) - 1);
             value = (unsigned char) value;
             smem[(pixelPerThread * blockDim.x + 2) * threadIdx.x] = value;
         }
@@ -443,7 +438,7 @@ __global__ void sobel_convolution(float *destination, Pixel *source, int type, i
             for(int y = -1; y < 2; y++){
                 if(blockStart + (blockDim.x * i) + threadIdx.x + width * y  < width * height &&
                    (int) blockStart + ((int) blockDim.x * i) + (int) threadIdx.x + width * y  >= 0){
-                    Pixel value = *(source + blockStart + (blockDim.x * i) + threadIdx.x + width * y);
+                    float value = *(source + blockStart + (blockDim.x * i) + threadIdx.x + width * y);
                     value = (unsigned char) value;
                     smem[(1 + (blockDim.x * i) + threadIdx.x) + (blockDim.x * pixelPerThread + 2) * (y + 1)] = value;
                 }
@@ -459,7 +454,7 @@ __global__ void sobel_convolution(float *destination, Pixel *source, int type, i
             smem[2 + blockDim.x * pixelPerThread - 1 + (2 + blockDim.x * pixelPerThread) * threadId] = 0;
             int start = blockStart + blockDim.x * pixelPerThread - 1;
             if(start / width + (threadId - 1) >= 0 && start / width + (threadId - 1) >= 0 && start % width + 1 < width) {
-                Pixel pixel = *(source + value);
+                float pixel = *(source + value);
                 pixel = (unsigned char) pixel;
                 smem[2 + blockDim.x * pixelPerThread - 1 + (2 + blockDim.x * pixelPerThread) * threadId] = pixel;
             }
@@ -468,30 +463,28 @@ __global__ void sobel_convolution(float *destination, Pixel *source, int type, i
 
     __syncthreads();
 
-    for (int i = 0; i < pixelPerThread; ++i) {
+    for (int i = 0; i < pixelPerThread && blockStart + (blockDim.x * i) + threadIdx.x < width * height; ++i) {
 
-        if(blockStart + (blockDim.x * i) + threadIdx.x < width * height){
-            float value = 0;
-            for (int j = -1; j < 2; ++j) {
-                for(int z = -1; z < 2; z++){
-                    int row = (blockStart + (blockDim.x * i) + threadIdx.x + width * j + z) / width;
-                    int column = (blockStart + (blockDim.x * i) + threadIdx.x + width * j + z) % width;
-                    if(column >= 0 && column < width && row >= 0 && row < height){
-                        float pixel = smem[(blockDim.x * i) + threadIdx.x + (j + 1) * (2 + blockDim.x * pixelPerThread) + (z + 1)];
-                        value += pixel * kernel[(j + 1) * 3 + z + 1];
-                    }
+        float value = 0;
+        for (int j = -1; j < 2; ++j) {
+            for(int z = -1; z < 2; z++){
+                int row = (blockStart + (blockDim.x * i) + threadIdx.x + width * j + z) / width;
+                int column = (blockStart + (blockDim.x * i) + threadIdx.x + width * j + z) % width;
+                if(column >= 0 && column < width && row >= 0 && row < height){
+                    float pixel = smem[(blockDim.x * i) + threadIdx.x + (j + 1) * (2 + blockDim.x * pixelPerThread) + (z + 1)];
+                    value += pixel * kernel[(j + 1) * 3 + z + 1];
                 }
             }
-
-            *(destination + blockStart + (blockDim.x * i) + threadIdx.x) = value;
         }
+
+        *(destination + blockStart + (blockDim.x * i) + threadIdx.x) = value;
     }
 }
 
 
 
 double CudaInterface::sobelFilter(float *edgeGradient, int *edgeDirection, Pixel *source, int width, int height,
-                                  int numBlocksConvolutionTwoDim, int numThreadConvolutionTwoDim, 
+                                  int numBlocksConvolutionTwoDim, int numThreadConvolutionTwoDim,
                                   int numBlockLinear, int numThreadLinear) {
 
     float *sobelHorizontal, *sobelVertical;
@@ -621,7 +614,7 @@ __global__ void harris_matrix(float *sobelHorizontal, float *sobelVertical, floa
 // This kernel sums values inside a 3x3 kernel: it's a 2D convolution
 __global__ void harris_matrix_sum(float *matrixSum, float *matrix, int width, int height){
 
-    extern __shared__ Pixel smem[];
+    extern __shared__ float smem[];
 
     int pixelPerThread = (width * height) / (gridDim.x * blockDim.x) + 1;
 
@@ -665,23 +658,21 @@ __global__ void harris_matrix_sum(float *matrixSum, float *matrix, int width, in
 
     __syncthreads();
 
-    for (int i = 0; i < pixelPerThread; ++i) {
+    for (int i = 0; i < pixelPerThread && blockStart + (blockDim.x * i) + threadIdx.x < width * height; ++i) {
 
-        if(blockStart + (blockDim.x * i) + threadIdx.x < width * height){
-            float value = 0;
-            for (int j = -1; j < 2; ++j) {
-                for(int z = -1; z < 2; z++){
-                    int row = (blockStart + (blockDim.x * i) + threadIdx.x + width * j + z) / width;
-                    int column = (blockStart + (blockDim.x * i) + threadIdx.x + width * j + z) % width;
-                    if(column >= 0 && column < width && row >= 0 && row < height){
-                        float pixel = smem[(blockDim.x * i) + threadIdx.x + (j + 1) * (2 + blockDim.x * pixelPerThread) + (z + 1)];
-                        value += pixel;
-                    }
+        float value = 0;
+        for (int j = -1; j < 2; ++j) {
+            for(int z = -1; z < 2; z++){
+                int row = (blockStart + (blockDim.x * i) + threadIdx.x + width * j + z) / width;
+                int column = (blockStart + (blockDim.x * i) + threadIdx.x + width * j + z) % width;
+                if(column >= 0 && column < width && row >= 0 && row < height){
+                    float pixel = smem[(blockDim.x * i) + threadIdx.x + (j + 1) * (2 + blockDim.x * pixelPerThread) + (z + 1)];
+                    value += pixel;
                 }
             }
-
-            *(matrixSum + blockStart + (blockDim.x * i) + threadIdx.x) = value;
         }
+
+        *(matrixSum + blockStart + (blockDim.x * i) + threadIdx.x) = value;
     }
 }
 
@@ -706,7 +697,6 @@ __global__ void harris_final_combination(Pixel *destination, float *sobelHorizon
 
         if(value > 9000000)
             *(destination + pos) = 255;
-
     }
 }
 
@@ -722,36 +712,23 @@ __global__ void print(float *matrix, int width, int height){
 double CudaInterface::harris(Pixel *destination, Pixel *source, int width, int height,
         int numBlocksConvolution, int numThreadConvolution, int numBlockLinear, int numThreadLinear) {
 
-    float *sobelHorizontal, *sobelVertical, *transposeImage1, *transposeImage2, *sobelHorizontalVertical,
+    float *sobelHorizontal, *sobelVertical, *sobelHorizontalVertical,
             *sobelHorizontalSum, *sobelVerticalSum, *sobelHorizontalVerticalSum;
 
     cudaMalloc(&sobelHorizontal, width * height * sizeof(float));
     cudaMalloc(&sobelVertical, width * height * sizeof(float));
-    cudaMalloc(&transposeImage1, width * height * sizeof(float));
-    cudaMalloc(&transposeImage2, width * height * sizeof(float));
     cudaMalloc(&sobelHorizontalVertical, width * height * sizeof(float));
     cudaMalloc(&sobelHorizontalSum, width * height * sizeof(float));
     cudaMalloc(&sobelVerticalSum, width * height * sizeof(float));
     cudaMalloc(&sobelHorizontalVerticalSum, width * height * sizeof(float));
 
-    // Vertical convolution
-    cudaStream_t stream;
-    cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
-    cudaEvent_t verticalEnd;
-    cudaEventCreate(&verticalEnd);
-
-    int sharedMemory = ((width * height) / (numBlocksConvolution * numThreadConvolution) + 1) * numThreadConvolution + 2;
+    int sharedMemory = ((width * height) / (numBlocksConvolution * numThreadConvolution) + 1) * numThreadConvolution * 3 + 6;
 
     double time = Utilities::seconds();
     // Horizontal convolution
-    sobel_convolution_one<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel)>>>(transposeImage1, source, 1, width, height);
-    sobel_convolution_two<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel)>>>(sobelHorizontal, transposeImage1, 2, height, width);
+    sobel_convolution<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel)>>>(sobelHorizontal, source, 1, width, height);
 
-    sobel_convolution_one<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel), stream>>>(transposeImage2, source, 2, width, height);
-    sobel_convolution_two<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel), stream>>>(sobelVertical, transposeImage2, 1, height, width);
-    cudaEventRecord(verticalEnd, stream);
-
-    cudaStreamWaitEvent(0, verticalEnd, 0);
+    sobel_convolution<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel)>>>(sobelVertical, source, 2, width, height);
 
     harris_matrix<<<numBlockLinear, numThreadLinear>>>(sobelHorizontal, sobelVertical, sobelHorizontalVertical, width, height);
 
@@ -768,13 +745,9 @@ double CudaInterface::harris(Pixel *destination, Pixel *source, int width, int h
 
     cudaFree(sobelHorizontal);
     cudaFree(sobelVertical);
-    cudaFree(transposeImage1);
-    cudaFree(transposeImage2);
     cudaFree(sobelHorizontalVertical);
     cudaFree(sobelHorizontalSum);
     cudaFree(sobelVerticalSum);
     cudaFree(sobelHorizontalVerticalSum);
-    cudaStreamDestroy(stream);
-    cudaEventDestroy(verticalEnd);
     return time;
 }

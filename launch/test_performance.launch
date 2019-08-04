@@ -45,14 +45,14 @@
     <!-- Number of blocks used to run the a two dimensional convolution kernel -->
     <!-- Recommended values:
           - door_med_res.jpg: 300
-          - door_high_res.jpg: 5000
+          - door_high_res.jpg: 20000
     -->
     <arg name="convolution_two_dim_kernel_num_block" default="300" />
 
     <!-- Number of thread per blocks used to run the a two dimensional convolution kernel -->
     <!-- Recommended values:
           - door_med_res.jpg: 256
-          - door_high_res.jpg: 512
+          - door_high_res.jpg: 256
     -->
     <arg name="convolution_two_dim_kernel_num_thread" default="256" />
 

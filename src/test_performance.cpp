@@ -208,14 +208,14 @@ int main(int argc, char **argv){
         cudaMalloc(&edgeDirectionGpu, image->getWidth() * image->getHeight() * sizeof(int));
 
         time = CudaInterface::sobelFilter(edgeGradientGpu, edgeDirectionGpu, destinationGaussianFilterGpu, image->getWidth(), image->getHeight(),
-                                          Parameters::getInstance().getConvolutionOneDimKernelNumBlock(),
-                                          Parameters::getInstance().getConvolutionOneDimKernelNumThread(),
+                                          Parameters::getInstance().getConvolutionTwoDimKernelNumBlock(),
+                                          Parameters::getInstance().getConvolutionTwoDimKernelNumThread(),
                                           Parameters::getInstance().getLinearKernelNumBlock(),
                                           Parameters::getInstance().getLinearKernelNumThread());
 
         cout << " - apply sobel filter: " << time << "\n" <<
-             "    - convolution operation: " << Parameters::getInstance().getConvolutionOneDimKernelNumBlock() << " blocks, " <<
-                                                                                                                              Parameters::getInstance().getConvolutionOneDimKernelNumThread() << " thread\n" <<
+             "    - convolution operation: " << Parameters::getInstance().getConvolutionTwoDimKernelNumBlock() << " blocks, " <<
+             Parameters::getInstance().getConvolutionTwoDimKernelNumThread() << " thread\n" <<
              "    - linear operation: " << Parameters::getInstance().getLinearKernelNumBlock() << " blocks, " <<
              Parameters::getInstance().getLinearKernelNumThread() << " thread" << endl;
 
@@ -248,7 +248,6 @@ int main(int argc, char **argv){
         cudaMemcpy(imageSource, destinationSobelSuppressedGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-corner.jpg", image->getOpenCVImage());
-
 
         cudaFreeHost(imageSource);
         cudaFree(imageSourceGpu);
