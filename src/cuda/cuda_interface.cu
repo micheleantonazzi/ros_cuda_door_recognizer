@@ -178,17 +178,15 @@ __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, in
     }
 
     if(blockStart + threadIdx.x < width * height){
-        for (int i = 0; i < pixelPerThread; ++i) {
-            if(blockStart + (blockDim.x * i) + threadIdx.x < width * height){
-                smem[maskDim / 2 + (blockDim.x * i) + threadIdx.x] = *(source + blockStart + (blockDim.x * i) + threadIdx.x);
-            }
+        for (int i = 0; i < pixelPerThread && blockStart + (blockDim.x * i) + threadIdx.x < width * height; ++i) {
+            smem[maskDim / 2 + (blockDim.x * i) + threadIdx.x] = *(source + blockStart + (blockDim.x * i) + threadIdx.x);
         }
     }
 
     // Load final part
     if(threadIdx.x >= blockDim.x - maskDim / 2 && blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x < width * height){
         smem[maskDim - 1 + blockDim.x * (pixelPerThread - 1) + threadIdx.x] = 0;
-        if(blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x < width * height - maskDim / 2){
+        if((blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x) % width + maskDim / 2 < width){
             smem[maskDim - 1 + blockDim.x * (pixelPerThread - 1) + threadIdx.x] = *(source + blockStart + blockDim.x * (pixelPerThread - 1) + threadIdx.x + maskDim / 2);
         }
     }
@@ -197,19 +195,19 @@ __global__ void gaussian_filter_horizontal(Pixel *destination, Pixel *source, in
 
     for (int i = 0; i < pixelPerThread && blockStart + (blockDim.x * i) + threadIdx.x < width * height; ++i) {
 
-            float value = 0;
-            for (int j = 0; j < maskDim; ++j) {
-                int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
-                if(column + j - maskDim / 2 >= 0 && column + j - maskDim / 2 < width){
-                    int pixel = smem[j + (blockDim.x * i) + threadIdx.x];
-                    value += ((unsigned char) pixel) * maskConstant[j];
-                }
-            }
-            int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
+        float value = 0;
+        for (int j = 0; j < maskDim; ++j) {
             int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
-            unsigned char finalChar = value;
-            int final = (finalChar << 16) + (finalChar << 8) + finalChar;
-            *(destination + column * height + row) = final;
+            if(column + j - maskDim / 2 >= 0 && column + j - maskDim / 2 < width){
+                int pixel = smem[j + (blockDim.x * i) + threadIdx.x];
+                value += ((unsigned char) pixel) * maskConstant[j];
+            }
+        }
+        int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
+        int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
+        unsigned char finalChar = value;
+        int final = (finalChar << 16) + (finalChar << 8) + finalChar;
+        *(destination + column * height + row) = final;
 
     }
 
@@ -434,7 +432,7 @@ __global__ void sobel_convolution(float *destination, Pixel *source, int type, i
     }
 
     if(blockStart + threadIdx.x < width * height){
-        for (int i = 0; i < pixelPerThread; ++i) {
+        for (int i = 0; i < pixelPerThread && blockStart + (blockDim.x * i) + threadIdx.x < width * height; ++i) {
             for(int y = -1; y < 2; y++){
                 if(blockStart + (blockDim.x * i) + threadIdx.x + width * y  < width * height &&
                    (int) blockStart + ((int) blockDim.x * i) + (int) threadIdx.x + width * y  >= 0){
@@ -453,7 +451,7 @@ __global__ void sobel_convolution(float *destination, Pixel *source, int type, i
         if(value < width * height && value >= 0){
             smem[2 + blockDim.x * pixelPerThread - 1 + (2 + blockDim.x * pixelPerThread) * threadId] = 0;
             int start = blockStart + blockDim.x * pixelPerThread - 1;
-            if(start / width + (threadId - 1) >= 0 && start / width + (threadId - 1) >= 0 && start % width + 1 < width) {
+            if(start / width + (threadId - 1) >= 0 && start / width + (threadId - 1) < height && start % width + 1 < width) {
                 float pixel = *(source + value);
                 pixel = (unsigned char) pixel;
                 smem[2 + blockDim.x * pixelPerThread - 1 + (2 + blockDim.x * pixelPerThread) * threadId] = pixel;
@@ -468,9 +466,9 @@ __global__ void sobel_convolution(float *destination, Pixel *source, int type, i
         float value = 0;
         for (int j = -1; j < 2; ++j) {
             for(int z = -1; z < 2; z++){
-                int row = (blockStart + (blockDim.x * i) + threadIdx.x + width * j + z) / width;
-                int column = (blockStart + (blockDim.x * i) + threadIdx.x + width * j + z) % width;
-                if(column >= 0 && column < width && row >= 0 && row < height){
+                int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
+                int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
+                if(column + z >= 0 && column + z < width && row + j >= 0 && row + j < height){
                     float pixel = smem[(blockDim.x * i) + threadIdx.x + (j + 1) * (2 + blockDim.x * pixelPerThread) + (z + 1)];
                     value += pixel * kernel[(j + 1) * 3 + z + 1];
                 }
@@ -632,7 +630,7 @@ __global__ void harris_matrix_sum(float *matrixSum, float *matrix, int width, in
     }
 
     if(blockStart + threadIdx.x < width * height){
-        for (int i = 0; i < pixelPerThread; ++i) {
+        for (int i = 0; i < pixelPerThread && blockStart + (blockDim.x * i) + threadIdx.x < width * height; ++i) {
             for(int y = -1; y < 2; y++){
                 if(blockStart + (blockDim.x * i) + threadIdx.x + width * y  < width * height &&
                         (int) blockStart + ((int) blockDim.x * i) + (int) threadIdx.x + width * y  >= 0){
@@ -663,9 +661,9 @@ __global__ void harris_matrix_sum(float *matrixSum, float *matrix, int width, in
         float value = 0;
         for (int j = -1; j < 2; ++j) {
             for(int z = -1; z < 2; z++){
-                int row = (blockStart + (blockDim.x * i) + threadIdx.x + width * j + z) / width;
-                int column = (blockStart + (blockDim.x * i) + threadIdx.x + width * j + z) % width;
-                if(column >= 0 && column < width && row >= 0 && row < height){
+                int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
+                int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
+                if(column + z >= 0 && column + z < width && row + j >= 0 && row + j < height){
                     float pixel = smem[(blockDim.x * i) + threadIdx.x + (j + 1) * (2 + blockDim.x * pixelPerThread) + (z + 1)];
                     value += pixel;
                 }
