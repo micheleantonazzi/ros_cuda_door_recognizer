@@ -10,11 +10,12 @@
 
 using namespace ros;
 
-void readFrame(const sensor_msgs::Image::ConstPtr&, Publisher&);
+void readFrame(const sensor_msgs::Image::ConstPtr&, Publisher&, Publisher&);
 
 // Memory in gpu
-Pixel *imageSource, *imageSourceGpu, *grayScaleGpu, *gaussianImageGpu, *transposeImage;
-float *mask, *edgeGradient, *sobelHorizontal, *sobelVertical;
+Pixel *imageSourceCanny, *imageSourceCorner, *imageCornerGpu, *imageSourceGpu, *grayScaleGpu, *gaussianImageGpu, *cannyImageGpu, *transposeImage;
+float *mask, *edgeGradient, *sobelHorizontal, *sobelVertical, *sobelHorizontalVertical,
+        *sobelHorizontalSum, *sobelVerticalSum, *sobelHorizontalVerticalSum;
 int *edgeDirection;
 bool alloc = false;
 
@@ -27,10 +28,16 @@ int main(int argc, char **argv) {
 
     NodeHandle node;
 
-    Publisher publisherGrayScale = node.advertise<sensor_msgs::Image>("door_recognizer/image_processed", 10);
+    Publisher publisherCanny, publisherHarris;
+
+    if(Parameters::getInstance().showEdgeImage())
+        publisherCanny = node.advertise<sensor_msgs::Image>("door_recognizer/edge_image", 10);
+
+    if(Parameters::getInstance().showCornerImage())
+        publisherHarris = node.advertise<sensor_msgs::Image>("door_recognizer/corner_image", 10);
 
     Subscriber subscriber = node.subscribe<sensor_msgs::Image>(Parameters::getInstance().getTopic(), 10,
-                                                               boost::bind(readFrame, _1, publisherGrayScale));
+                                                               boost::bind(readFrame, _1, publisherCanny, publisherHarris));
 
     mask = Utilities::getGaussianArrayPinned(Parameters::getInstance().getGaussianMaskSize(),
                                              Parameters::getInstance().getGaussianAlpha());
@@ -39,49 +46,57 @@ int main(int argc, char **argv) {
         spinOnce();
     }
 
-    cudaFreeHost(imageSource);
-    cudaFree(imageSourceGpu);
-    cudaFree(grayScaleGpu);
-    cudaFree(gaussianImageGpu);
-    cudaFreeHost(mask);
-    cudaFree(transposeImage);
-    cudaFree(edgeGradient);
-    cudaFree(edgeDirection);
-    cudaFree(sobelHorizontal);
-    cudaFree(sobelVertical);
 }
 
-void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGrayScale){
+void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherCanny, Publisher& publisherHarris){
     if(!alloc){
         int imageSize = image->width * image->height;
         cudaMalloc(&imageSourceGpu, imageSize * sizeof(Pixel));
         cudaMalloc(&grayScaleGpu, imageSize * sizeof(Pixel));
         cudaMalloc(&gaussianImageGpu, imageSize * sizeof(Pixel));
         cudaMalloc(&transposeImage, imageSize * sizeof(Pixel));
+        cudaMalloc(&cannyImageGpu, imageSize * sizeof(Pixel));
         cudaMalloc(&edgeGradient, imageSize * sizeof(float));
         cudaMalloc(&edgeDirection, imageSize * sizeof(int));
         cudaMalloc(&sobelHorizontal, imageSize * sizeof(float));
         cudaMalloc(&sobelVertical, imageSize * sizeof(float));
+        cudaMalloc(&sobelHorizontalVertical, imageSize * sizeof(float));
+        cudaMalloc(&sobelHorizontalSum, imageSize * sizeof(float));
+        cudaMalloc(&sobelVerticalSum, imageSize * sizeof(float));
+        cudaMalloc(&sobelHorizontalVerticalSum, imageSize * sizeof(float));
+        cudaMallocHost(&imageSourceCorner, image->width * image->height * sizeof(Pixel));
+        cudaMalloc(&imageCornerGpu, image->width * image->height * sizeof(Pixel));
         alloc = true;
     }
 
-    cudaStream_t stream;
-    cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
 
-    imageSource = CudaInterface::getPixelArray(image->data.data(), image->width, image->height);
+    sensor_msgs::Image imageCornerFinal(*image);
+    imageCornerFinal.height = image->height;
+    imageCornerFinal.width = image->width;
+    imageCornerFinal.encoding = image->encoding;
+
+    cudaStream_t streamCanny, streamHarris;
+    cudaStreamCreateWithFlags(&streamCanny, cudaStreamNonBlocking);
+    cudaStreamCreateWithFlags(&streamHarris, cudaStreamNonBlocking);
+
+    cudaEvent_t cannyEnd;
+    cudaEventCreate(&cannyEnd);
+
+
+    imageSourceCanny = CudaInterface::getPixelArray(image->data.data(), image->width, image->height);
 
     // Gray scale
-    cudaMemcpyAsync(imageSourceGpu, imageSource,  image->width * image->height * sizeof(Pixel), cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(imageSourceGpu, imageSourceCanny, image->width * image->height * sizeof(Pixel), cudaMemcpyHostToDevice, streamCanny);
 
     CudaInterface::toGrayScale(grayScaleGpu, imageSourceGpu, image->width, image->height,
                                Parameters::getInstance().getLinearKernelNumBlock(),
-                               Parameters::getInstance().getLinearKernelNumThread(), stream);
+                               Parameters::getInstance().getLinearKernelNumThread(), streamCanny);
 
     // Gaussian filter
     CudaInterface::gaussianFilter(gaussianImageGpu, grayScaleGpu, transposeImage, image->width, image->height,
                                   mask, Parameters::getInstance().getGaussianMaskSize(),
                                   Parameters::getInstance().getConvolutionOneDimKernelNumBlock(),
-                                  Parameters::getInstance().getConvolutionOneDimKernelNumThread(), stream);
+                                  Parameters::getInstance().getConvolutionOneDimKernelNumThread(), streamCanny);
 
     // Sobel filter
     CudaInterface::sobelFilter(edgeGradient, edgeDirection, gaussianImageGpu, sobelHorizontal, sobelVertical,
@@ -89,21 +104,51 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherGr
                                Parameters::getInstance().getConvolutionTwoDimKernelNumThread(),
                                Parameters::getInstance().getLinearKernelNumBlock(),
                                Parameters::getInstance().getLinearKernelNumThread(),
-                               stream);
+                               streamCanny);
 
     // Non maximum suppression
-    CudaInterface::nonMaximumSuppression(gaussianImageGpu, edgeGradient, edgeDirection, image->width, image->height,
+    CudaInterface::nonMaximumSuppression(cannyImageGpu, edgeGradient, edgeDirection, image->width, image->height,
                                          Parameters::getInstance().getLinearKernelNumBlock(),
-                                         Parameters::getInstance().getLinearKernelNumThread(), stream);
+                                         Parameters::getInstance().getLinearKernelNumThread(), streamCanny);
+
+    cudaMemcpyAsync(imageCornerGpu, cannyImageGpu, image->width * image->height * sizeof(Pixel), cudaMemcpyDeviceToDevice, streamCanny);
+
+    cudaEventRecord(cannyEnd, streamCanny);
 
 
-    cudaMemcpyAsync(imageSource, gaussianImageGpu,  image->width * image->height * sizeof(Pixel), cudaMemcpyDeviceToHost, stream);
 
-    cudaStreamSynchronize(stream);
+    cudaMemcpyAsync(imageSourceCanny, cannyImageGpu, image->width * image->height * sizeof(Pixel), cudaMemcpyDeviceToHost, streamCanny);
 
-    CudaInterface::pixelArrayToCharArray((uint8_t*)image->data.data(), imageSource, image->width, image->height);
-    publisherGrayScale.publish(image);
+    // HARRIS
+    cudaStreamWaitEvent(streamHarris, cannyEnd, 0);
+    CudaInterface::harris(imageCornerGpu, sobelHorizontal, sobelVertical, sobelHorizontalVertical, sobelHorizontalSum, sobelVerticalSum,
+            sobelHorizontalVerticalSum, image->width, image->height, Parameters::getInstance().getConvolutionTwoDimKernelNumBlock(),
+                          Parameters::getInstance().getConvolutionTwoDimKernelNumThread(), Parameters::getInstance().getLinearKernelNumBlock(),
+                          Parameters::getInstance().getLinearKernelNumThread(), streamHarris);
 
-    cudaStreamDestroy(stream);
-    cudaFreeHost(imageSource);
+    cudaMemcpyAsync(imageSourceCorner, imageCornerGpu, image->width * image->height * sizeof(Pixel), cudaMemcpyDeviceToHost, streamHarris);
+
+
+    cudaStreamSynchronize(streamCanny);
+
+    if(Parameters::getInstance().showEdgeImage()){
+        CudaInterface::pixelArrayToCharArray((uint8_t*) image->data.data(), imageSourceCanny, image->width, image->height);
+    }
+
+    cudaStreamSynchronize(streamHarris);
+
+    if(Parameters::getInstance().showCornerImage()){
+        CudaInterface::pixelArrayToCharArray((uint8_t*) imageCornerFinal.data.data(), imageSourceCorner, image->width, image->height);
+    }
+
+    if(Parameters::getInstance().showEdgeImage())
+        publisherCanny.publish(image);
+
+    if(Parameters::getInstance().showCornerImage())
+        publisherHarris.publish(imageCornerFinal);
+
+    cudaStreamDestroy(streamCanny);
+    cudaStreamDestroy(streamHarris);
+    cudaEventDestroy(cannyEnd);
+    cudaFreeHost(imageSourceCanny);
 }
