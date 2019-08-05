@@ -226,7 +226,7 @@ void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, un
             float y = *(sobelVertical2Sum + i * width + j);
             float xy = *(sobelHorizontalVerticalSum + i * width + j);
 
-            *(corners + i * width + j) = (x * y - xy * xy) - 0.06 * ((x + y) * (x + y));
+            *(corners + i * width + j) = (x * y - xy * xy) - 0.06f * ((x + y) * (x + y));
         }
     }
 
