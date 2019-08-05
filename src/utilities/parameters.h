@@ -46,6 +46,10 @@ private:
     // Number of thread per block used to run a two dimensional convolution kernel
     int convolution_two_dim_kernel_num_thread;
 
+    bool show_edge_image;
+
+    bool show_corner_image;
+
     // The path where to put the processed images
     string processed_images_path;
 
@@ -79,6 +83,10 @@ public:
     int getConvolutionTwoDimKernelNumBlock();
 
     int getConvolutionTwoDimKernelNumThread();
+    
+    bool showEdgeImage();
+    
+    bool showCornerImage();
 
     string getProcessedImagesPath();
 
