@@ -58,7 +58,11 @@ public:
                                         int numBlocks, int numThread, cudaStream_t &stream);
 
     static double harris(Pixel *destination, Pixel *source, int width, int height,
-            int numBlocksConvolution, int numThreadConvolution, int numBlockLinear, int numThreadLinear);
+            int numBlocksTwoDimConvolution, int numThreadTwoDimConvolution, int numBlockLinear, int numThreadLinear);
+
+    static void harris(Pixel *destination, float *sobelHorizontal, float *sobelVertical, float *sobelHorizontalVertical,
+                        float *sobelHorizontalSum, float *sobelVerticalSum, float *sobelHorizontalVerticalSum, int width, int height,
+                         int numBlocksTwoDimConvolution, int numThreadTwoDimConvolution, int numBlockLinear, int numThreadLinear, cudaStream_t& stream);
 };
 
 

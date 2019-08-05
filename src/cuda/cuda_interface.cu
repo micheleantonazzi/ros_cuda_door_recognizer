@@ -40,7 +40,7 @@ Pixel* CudaInterface::getPixelArray(const unsigned char *imageData, int width, i
     cudaMallocHost(&pixelArray, imageSize * sizeof(Pixel));
 
     for(int i = 0; i < imageSize; ++i)
-        pixelArray[i] = (*(imageData++) << 16) + (*(imageData++) << 8) + *(imageData++);
+        *(pixelArray + i) = (*(imageData++) << 16) + (*(imageData++) << 8) + *(imageData++);
 
     return pixelArray;
 
@@ -708,7 +708,7 @@ __global__ void print(float *matrix, int width, int height){
 }
 
 double CudaInterface::harris(Pixel *destination, Pixel *source, int width, int height,
-        int numBlocksConvolution, int numThreadConvolution, int numBlockLinear, int numThreadLinear) {
+        int numBlocksTwoDimConvolution, int numThreadTwoDimConvolution, int numBlockLinear, int numThreadLinear) {
 
     float *sobelHorizontal, *sobelVertical, *sobelHorizontalVertical,
             *sobelHorizontalSum, *sobelVerticalSum, *sobelHorizontalVerticalSum;
@@ -720,21 +720,19 @@ double CudaInterface::harris(Pixel *destination, Pixel *source, int width, int h
     cudaMalloc(&sobelVerticalSum, width * height * sizeof(float));
     cudaMalloc(&sobelHorizontalVerticalSum, width * height * sizeof(float));
 
-    int sharedMemory = ((width * height) / (numBlocksConvolution * numThreadConvolution) + 1) * numThreadConvolution * 3 + 6;
+    int sharedMemory = ((width * height) / (numBlocksTwoDimConvolution * numThreadTwoDimConvolution) + 1) * numThreadTwoDimConvolution * 3 + 6;
 
     double time = Utilities::seconds();
     // Horizontal convolution
-    sobel_convolution<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel)>>>(sobelHorizontal, source, 1, width, height);
+    sobel_convolution<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(Pixel)>>>(sobelHorizontal, source, 1, width, height);
 
-    sobel_convolution<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(Pixel)>>>(sobelVertical, source, 2, width, height);
+    sobel_convolution<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(Pixel)>>>(sobelVertical, source, 2, width, height);
 
     harris_matrix<<<numBlockLinear, numThreadLinear>>>(sobelHorizontal, sobelVertical, sobelHorizontalVertical, width, height);
 
-    sharedMemory = ((width * height) / (numBlocksConvolution * numThreadConvolution) + 1) * numThreadConvolution * 3 + 6;
-
-    harris_matrix_sum<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(float)>>>(sobelHorizontalSum, sobelHorizontal, width, height);
-    harris_matrix_sum<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(float)>>>(sobelVerticalSum, sobelVertical, width, height);
-    harris_matrix_sum<<<numBlocksConvolution, numThreadConvolution, sharedMemory * sizeof(float)>>>(sobelHorizontalVerticalSum, sobelHorizontalVertical, width, height);
+    harris_matrix_sum<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(float)>>>(sobelHorizontalSum, sobelHorizontal, width, height);
+    harris_matrix_sum<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(float)>>>(sobelVerticalSum, sobelVertical, width, height);
+    harris_matrix_sum<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(float)>>>(sobelHorizontalVerticalSum, sobelHorizontalVertical, width, height);
 
     harris_final_combination<<<numBlockLinear, numThreadLinear>>>(destination, sobelHorizontalSum, sobelVerticalSum, sobelHorizontalVerticalSum, width, height);
 
@@ -748,4 +746,21 @@ double CudaInterface::harris(Pixel *destination, Pixel *source, int width, int h
     cudaFree(sobelVerticalSum);
     cudaFree(sobelHorizontalVerticalSum);
     return time;
+}
+
+void CudaInterface::harris(Pixel *destination, float *sobelHorizontal, float *sobelVertical, float *sobelHorizontalVertical,
+                           float *sobelHorizontalSum, float *sobelVerticalSum, float *sobelHorizontalVerticalSum, int width, int height,
+                           int numBlocksTwoDimConvolution, int numThreadTwoDimConvolution, int numBlockLinear,
+                           int numThreadLinear, cudaStream_t& stream) {
+
+    int sharedMemory = ((width * height) / (numBlocksTwoDimConvolution * numThreadTwoDimConvolution) + 1) * numThreadTwoDimConvolution * 3 + 6;
+
+    harris_matrix<<<numBlockLinear, numThreadLinear, 0, stream>>>(sobelHorizontal, sobelVertical, sobelHorizontalVertical, width, height);
+
+    harris_matrix_sum<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(float), stream>>>(sobelHorizontalSum, sobelHorizontal, width, height);
+    harris_matrix_sum<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(float), stream>>>(sobelVerticalSum, sobelVertical, width, height);
+    harris_matrix_sum<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(float), stream>>>(sobelHorizontalVerticalSum, sobelHorizontalVertical, width, height);
+
+    harris_final_combination<<<numBlockLinear, numThreadLinear, 0, stream>>>(destination, sobelHorizontalSum, sobelVerticalSum, sobelHorizontalVerticalSum, width, height);
+
 }
