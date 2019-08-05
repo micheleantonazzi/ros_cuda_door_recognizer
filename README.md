@@ -42,9 +42,30 @@ In order to detect a door, the program uses techniques of image processing. In t
   * **non maximum suppression:** the last step of the Canny filter is to identify an accurate edge value. In fact the edges found with Sobel filter is quite blurred and this technique suppresses all gradient values except the local maximum. The algorithm is quite simple and is composed by two step:
 
     * compare the value of the current pixel with the value of the two adjacent pixel in the edge direction
+    
   * if the value of the current pixel is the largest the pixel will be preserved, otherwise it will be suppressed (set to 0)
   
     After that, the pixel value will set to 255 (white) if its value is higher than a limit, otherwise it will be deleted. This final control is useful to suppress noise-derived edges. This limit is empirically determined.  
+  
+  The second step is to find the corners inside the image. In order to do this, Harris corner detector algorithm is implemented in CPU and GPU. This algorithm uses procedures similar than those used in Canny filter, they are:
+  
+  * **calculate the derivative approximations:** this step is the same used in Sobel filter an it produces two matrix: G~x~ and G~y~
+  
+  * **compute the products of the derivatives:** the result of this step is 3 matrix, G~x^2~, G~y^2~, G~xy~, where:  
+  
+    * G~xy~[x][y] = G~x~[x][y] * G~y~[x][y]
+    * G~x^2~[x][y] = G~x~[x][y] * G~x~[x][y] 
+    * G~y^2~[x][y] = G~y~[x][y] * G~y~[x][y] 
+  
+  * **compute the sums of the products of derivatives:** for each matrix found in previous step must be applied a 2D convolution with a particular kernel: in each position there is the value 1. In other words, each pixel is the result of the sum with its neighbors
+  
+  * **compute the Harris response:** the last step is to calculate, for each pixel, the formula `R = det(M) - k(trace(M))^2`, where:
+  
+    * M is the matrix: ![](images/md/matrix.png)
+    * trace(M) =  G~x^2~ + G~y^2~
+    * k is a constant empirically determined in interval [0.04, 0.06]
+  
+    Now, the pixel with a R value very high are corners 
 
 ## Performance evaluation and profiling
 
@@ -240,7 +261,7 @@ Metrics:
   Performance:
 
   - **CPU:** 0.4129 second
-  - **GPU:** 0.009663 second (43 time faster)
+  - **GPU:** 0.009663 second (43 times faster)
 
   Metrics:
 
@@ -249,3 +270,15 @@ Metrics:
   - **global memory load efficiency:** 44.5%
   - **global memory store efficiency:** 100%
 
+### Harris corner detector
+
+![Harris corner detector](images/md/harris_corner.png)
+
+The procedures are very similar then those applied in Canny filter, so the value of the GPU metrics are not very interesting. In this case only the performance are shown.
+
+#### Image 390 x 520 pixel
+
+Performance:
+
+* **CPU:** 0.01692
+* **GPU:** 0.0005769 (29 times faster)
