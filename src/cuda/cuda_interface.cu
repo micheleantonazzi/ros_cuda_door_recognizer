@@ -551,15 +551,15 @@ __global__ void non_maximum_suppression(Pixel *destination, float *edgeGradient,
             if (x + 1 < height)
                 second = *(edgeGradient + (x + 1) * width + y);
         } else if (dir == 45) {
-            if (x - 1 >= 0 && y + 1 < width)
-                first = *(edgeGradient + (x - 1) * width + y + 1);
-            if (x + 1 < height && y - 1 >= 0)
-                second = *(edgeGradient + (x + 1) * width + y - 1);
-        } else if (dir == 135) {
             if (x + 1 < height && y + 1 < width)
                 first = *(edgeGradient + (x + 1) * width + y + 1);
             if (x - 1 >= 0 && y - 1 >= 0)
                 second = *(edgeGradient + (x - 1) * width + y - 1);
+        } else if (dir == 135) {
+            if (x - 1 >= 0 && y + 1 < width)
+                first = *(edgeGradient + (x - 1) * width + y + 1);
+            if (x + 1 < height && y - 1 >= 0)
+                second = *(edgeGradient + (x + 1) * width + y - 1);
         }
 
         float currentValue = edgeGradient[pos];

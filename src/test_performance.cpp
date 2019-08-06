@@ -247,6 +247,7 @@ int main(int argc, char **argv){
 
         cudaMemcpy(imageSource, destinationSobelSuppressedGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
+
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-corner.jpg", image->getOpenCVImage());
 
         cudaFreeHost(imageSource);

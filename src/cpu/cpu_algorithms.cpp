@@ -133,6 +133,57 @@ void CpuAlgorithms::sobel(float *edgeGradient, int *edgeDirection, unsigned char
     delete(sobelVertical);
 }
 
+
+void CpuAlgorithms::nonMaximumSuppression(unsigned char *destination, float *edgeGradient, int *edgeDirection, int width, int height) {
+
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            int dir = *(edgeDirection + i * width + j);
+            float first = 0;
+            float second = 0;
+
+            if(dir == 0){
+                if(j - 1 >= 0)
+                    first = *(edgeGradient + i * width + j - 1);
+                if(j + 1 < width)
+                    second = *(edgeGradient + i * width + j + 1);
+            }
+            else if(dir == 90){
+                if(i - 1 >= 0)
+                    first = *(edgeGradient + (i - 1) * width + j);
+                if(i + 1 < height)
+                    second = *(edgeGradient + (i + 1) * width + j);
+            }
+            else if(dir == 45){
+                if(i + 1 < height && j + 1 < width)
+                    first = *(edgeGradient + (i + 1) * width + j + 1);
+                if(i - 1 >= 0 && j - 1 >= 0)
+                    second = *(edgeGradient + (i - 1) * width + j - 1);
+
+            }
+            else if(dir == 135){
+                if(i - 1 >= 0 && j + 1 < width)
+                    first = *(edgeGradient + (i - 1) * width + j + 1);
+                if(i + 1 < height && j - 1 >= 0)
+                    second = *(edgeGradient + (i + 1) * width + j - 1);
+            }
+
+            float currentValue = *(edgeGradient + i * width + j);
+
+            if(!(currentValue >= first && currentValue >= second))
+                currentValue = 0;
+            else if(currentValue > 50)
+                currentValue = 255;
+            else
+                currentValue = 0;
+
+            *(destination + (i * width + j) * 3) = currentValue;
+            *(destination + (i * width + j) * 3 + 1) = currentValue;
+            *(destination + (i * width + j) * 3 + 2)  = currentValue;
+        }
+    }
+}
+
 void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, unsigned char *imageSobel, int width, int height) {
     int maskDim = 3;
     int *sobelMaskHorizontal = Utilities::getSobelMaskHorizontal();
@@ -239,7 +290,7 @@ void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, un
             float max = true;
             float currentValue = *(corners + i * width + j);
 
-            /*for (int k = -1; k <= 1 && max; ++k) {
+            for (int k = -1; k <= 1 && max; ++k) {
                 for (int z = -1; z <= 1 && max; ++z) {
                     if(i + k >= 0 && i + k < height &&
                        j + z >= 0 && j + z < width) {
@@ -249,9 +300,9 @@ void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, un
                     }
                 }
             }
-            */
 
-            if(currentValue > 900000){
+
+            if(currentValue > 9000000){
                 if(!max)
                     currentValue = 0;
                 else
@@ -295,53 +346,4 @@ void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, un
     delete(sobelVertical2Sum);
     delete(sobelHorizontalVertical);
     delete(sobelHorizontalVerticalSum);
-}
-
-void CpuAlgorithms::nonMaximumSuppression(unsigned char *destination, float *edgeGradient, int *edgeDirection, int width, int height) {
-
-    for (int i = 0; i < height; ++i) {
-        for (int j = 0; j < width; ++j) {
-            int dir = *(edgeDirection + i * width + j);
-            float first = 0;
-            float second = 0;
-
-            if(dir == 0){
-                if(j - 1 >= 0)
-                    first = *(edgeGradient + i * width + j - 1);
-                if(j + 1 < width)
-                    second = *(edgeGradient + i * width + j + 1);
-            }
-            else if(dir == 90){
-                if(i - 1 >= 0)
-                    first = *(edgeGradient + (i - 1) * width + j);
-                if(i + 1 < height)
-                    second = *(edgeGradient + (i + 1) * width + j);
-            }
-            else if(dir == 45){
-                if(i - 1 >= 0 && j + 1 < width)
-                    first = *(edgeGradient + (i - 1) * width + j + 1);
-                if(i + 1 < height && j - 1 >= 0)
-                    second = *(edgeGradient + (i + 1) * width + j - 1);
-            }
-            else if(dir == 135){
-                if(i + 1 < height && j + 1 < width)
-                    first = *(edgeGradient + (i + 1) * width + j + 1);
-                if(i - 1 >= 0 && j - 1 >= 0)
-                    second = *(edgeGradient + (i - 1) * width + j - 1);
-            }
-
-            float currentValue = *(edgeGradient + i * width + j);
-
-            if(!(currentValue >= first && currentValue >= second))
-                currentValue = 0;
-            else if(currentValue > 50)
-                currentValue = 255;
-            else
-                currentValue = 0;
-
-            *(destination + (i * width + j) * 3) = currentValue;
-            *(destination + (i * width + j) * 3 + 1) = currentValue;
-            *(destination + (i * width + j) * 3 + 2)  = currentValue;
-        }
-    }
 }
