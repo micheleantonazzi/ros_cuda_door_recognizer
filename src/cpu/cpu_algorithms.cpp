@@ -3,6 +3,8 @@
 //
 
 #include <sensor_msgs/Image.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/opencv.hpp>
 #include "cpu_algorithms.h"
 #include "../utilities/utilities.h"
 
@@ -285,8 +287,6 @@ void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, un
 
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
-            float first = 0;
-            float second = 0;
             float max = true;
             float currentValue = *(corners + i * width + j);
 
@@ -296,11 +296,9 @@ void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, un
                        j + z >= 0 && j + z < width) {
                         if(currentValue < *(corners + ((i + k) * width + j + z)))
                             max = false;
-
                     }
                 }
             }
-
 
             if(currentValue > 9000000){
                 if(!max)
@@ -346,4 +344,138 @@ void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, un
     delete(sobelVertical2Sum);
     delete(sobelHorizontalVertical);
     delete(sobelHorizontalVerticalSum);
+}
+
+double CpuAlgorithms::houghLinesIntersection(vector<Point> &points, Mat &image) {
+    vector<Vec2f> lines;
+
+    double time = Utilities::seconds();
+
+    HoughLines(image, lines, 1, CV_PI/180, 110, 0, 0 );
+    for (int i = 0; i < lines.size() - 1; ++i) {
+        for (int j = i + 1; j < lines.size(); ++j) {
+            float rho1 = lines[i][0], theta1 = lines[i][1], rho2 = lines[j][0], theta2 = lines[j][1];
+            Point pt1, pt2, pt3, pt4;
+            double a = cos(theta1), b = sin(theta1), c = cos(theta2), d = sin(theta2);
+            double x1 = a*rho1, y1 = b*rho1, x2 = c*rho2, y2 = d*rho2;
+            pt1.x = cvRound(x1 + 1000*(-b));
+            pt1.y = cvRound(y1 + 1000*(a));
+            pt2.x = cvRound(x1 - 1000*(-b));
+            pt2.y = cvRound(y1 - 1000*(a));
+
+            pt3.x = cvRound(x2 + 1000*(-d));
+            pt3.y = cvRound(y2 + 1000*(c));
+            pt4.x = cvRound(x2 - 1000*(-d));
+            pt4.y = cvRound(y2 - 1000*(c));
+
+            Point x = pt3 - pt1;
+            Point d1 = pt2 - pt1;
+            Point d2 = pt4 - pt3;
+
+            float cross = d1.x * d2.y - d1.y * d2.x;
+            if (abs(cross) >= 1e-8f){
+                Point r;
+                double t1 = (x.x * d2.y - x.y * d2.x) / cross;
+                r = pt1 + d1 * t1;
+                if(r.x >= 0 && r.x < image.cols && r.y >= 0 && r.y < image.rows){
+                    points.push_back(r);
+                }
+            }
+        }
+    }
+
+    return Utilities::seconds() - time;
+}
+
+double CpuAlgorithms::findCandidateCorner(vector<Point> &candidateCorners, unsigned char *cornerImage, vector<Point> &intersections, int width, int height) {
+
+    unsigned char B;
+    unsigned char G;
+    unsigned char R;
+    Point point;
+    int mask = 5;
+    double time = Utilities::seconds();
+    for(int i = 0; i < intersections.size(); ++i){
+        point = intersections[i];
+        for(int y = point.y - mask / 2; y <= point.y + mask / 2; y++){
+            if (y >= 0 && y < height){
+                for(int x = point.x - mask / 2; x <= point.x + mask / 2; x++){
+                    if (x >= 0 && x < width){
+                        B = *(cornerImage + (y * width + x) * 3);
+                        G = *(cornerImage + (y * width + x) * 3 + 1);
+                        R = *(cornerImage + (y * width + x) * 3 + 2);
+                        if(B == 0 && G == 255 && R == 0){
+                            candidateCorners.push_back(Point(x, y));
+                            *(cornerImage + (y * width + x) * 3) = 0;
+                            *(cornerImage + (y * width + x) * 3 + 1) = 0;
+                            *(cornerImage + (y * width + x) * 3 + 2) = 0;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return Utilities::seconds() - time;
+}
+
+double CpuAlgorithms::candidateGroups(vector<int> &groups, vector<Point> &corners, Mat &image, int width, int height) {
+
+    float diagonal = sqrt(width * width + height * height);
+    float heightThresL = 0.5;
+    float heightThresH = 0.9;
+    float widthThresH = 0.8;
+    float widthThresL = 0.1;
+    float directionThresL = 15;
+    float directionThresH = 85;
+    float parallelThres = 2.0;
+    float ratioThresL = 2.0;
+    float ratioThresH = 3.0;
+
+    double time = Utilities::seconds();
+    for (int i = 0; i < corners.size(); ++i) {
+        for (int y = 0; y < corners.size(); ++y) {
+            Point a = corners[i];
+            Point b = corners[y];
+            float Sab = sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2)) / diagonal;
+            float Dab = atan(abs((1.0 * a.x - b.x)) / abs(1.0 * a.y - b.y)) * (180 / (float) M_PI);
+
+            if(i != y && a.x < b.x && widthThresL < Sab && Sab < widthThresH && Dab > directionThresH) {
+                for (int z = 0; z < corners.size(); ++z) {
+                    Point c = corners[z];
+                    float Sbc = sqrt(pow(c.x - b.x, 2) + pow(c.y - b.y, 2)) / diagonal;
+                    float Dbc = atan(abs((1.0 * c.x - b.x)) / abs(1.0 * c.y - b.y)) * (180 / (float) M_PI);
+
+                    if(y != z && b.y < c.y && a.x < c.x && a.y < c.y && heightThresL < Sbc && Sbc < heightThresH && Dbc < directionThresL) {
+                        for (int t = 0; t < corners.size(); ++t) {
+                            Point d = corners[t];
+
+                            float Scd = sqrt(pow(c.x - d.x, 2) + pow(c.y - d.y, 2)) / diagonal;
+                            float Dcd = atan(abs((1.0 * c.x - d.x)) / abs(1.0 * c.y - d.y)) * (180 / (float) M_PI);
+
+                            float Sda = sqrt(pow(d.x - a.x, 2) + pow(d.y - a.y, 2)) / diagonal;
+                            float Dda = atan(abs((1.0 * d.x - a.x)) / abs(1.0 * d.y - a.y)) * (180 / (float) M_PI);
+                            //printf("%f, %f\n", Sda, Dda);
+                            if (z != t && d.x < c.x && d.x < b.x && b.y < d.y && a.y < d.y && widthThresL < Scd && Scd < widthThresH && Dcd > directionThresH &&
+                            heightThresL < Sda && Sda < heightThresH && Dda < directionThresL &
+                            abs(Dda - Dbc) < parallelThres && ratioThresL < (Sda + Sbc) / (Scd + Sab) &&
+                            (Sda + Sbc) / (Scd + Sab) < ratioThresH) {
+
+                                printf("a: %i, %i, b: %i, %i, c: %i, %i, d: %i, %i\n", a.x, a.y, b.x, b.y,c.x, c.y, d.x, d.y);
+                                line( image, a, b, Scalar(0,0,255), 2);
+                                line( image, b, c, Scalar(0,0,255), 2);
+
+                                line( image, c, d, Scalar(0,0,255), 2);
+
+                                line( image, d, a, Scalar(0,0,255), 2);
+
+                                groups.push_back(1);
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+    return Utilities::seconds() - time;
 }

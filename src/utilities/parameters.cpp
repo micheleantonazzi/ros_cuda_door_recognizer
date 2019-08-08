@@ -34,7 +34,7 @@ void Parameters::getValues() {
     nodeHandle.param<bool>("show_corner_image", this->show_corner_image, true);
     nodeHandle.param<string>("processed_images_path", this->processed_images_path, "/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/processed_images/");
     nodeHandle.param<int>("gaussian_mask_size", this->gaussian_mask_size, 5);
-    nodeHandle.param<float>("gaussian_alpha", this->gaussian_alpha, 0.8);
+    nodeHandle.param<float>("gaussian_alpha", this->gaussian_alpha, 1.2);
 }
 
 bool Parameters::usingCamera() {

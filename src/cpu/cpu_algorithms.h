@@ -4,6 +4,11 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>
+#include <opencv2/core/core.hpp>
+
+using namespace std;
+using namespace cv;
+
 
 #ifndef ROS_CUDA_DOOR_RECOGNIZER_CPU_ALGORITMS_H
 #define ROS_CUDA_DOOR_RECOGNIZER_CPU_ALGORITMS_H
@@ -23,6 +28,10 @@ public:
     void sobel(float *edgeGradient, int *edgeDirection, unsigned char *source, int width, int height);
     void nonMaximumSuppression(unsigned char *destination, float *edgeGradient, int *edgeDirection, int width, int height);
     void harris(unsigned char *destination, unsigned char *source, unsigned char *imageSobel, int width, int height);
+    double houghLinesIntersection(vector<Point> &points, Mat &image);
+    double findCandidateCorner(vector<Point> &candidateCorners, unsigned char *image, vector<Point>& intersections, int width, int height);
+    double candidateGroups(vector<int> &groups, vector<Point>& corners, Mat &image, int width, int height);
+
 };
 
 

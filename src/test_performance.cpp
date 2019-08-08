@@ -81,7 +81,11 @@ int main(int argc, char **argv){
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-sobel.jpg", imageSobel);
 
         // Harris corner detector
-        Mat corner(imageSobel);
+        Mat corner(image->getHeight(), image->getWidth(), CV_8UC3);
+        for (int j = 0; j < image->getWidth() * image->getHeight() * 3; ++j) {
+            *(corner.data + j) = image->getOpenCVImage().data[j];
+
+        }
 
         time = Utilities::seconds();
         CpuAlgorithms::getInstance().harris(corner.data, imageGaussian.data, imageSobel.data, image->getWidth(),
@@ -92,33 +96,39 @@ int main(int argc, char **argv){
 
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner.jpg", corner);
 
-        /*Image src;
-        src.acquireImage();
-        Mat dst;
-        Canny(src.getOpenCVImage(), dst, 50, 200, 3);
-        vector<Vec2f> lines;
-        time = Utilities::seconds();
-        HoughLines(dst, lines, 1, CV_PI/180, 100, 0, 0 );
-        printf("tempo hough: %f\n", Utilities::seconds() - time);
-        Mat dstHough;
-        cvtColor(dst, dstHough, COLOR_GRAY2BGR);
-        for( size_t i = 0; i < lines.size(); i++ )
-        {
-            float rho = lines[i][0], theta = lines[i][1];
-            Point pt1, pt2;
-            double a = cos(theta), b = sin(theta);
-            double x0 = a*rho, y0 = b*rho;
-            pt1.x = cvRound(x0 + 1000*(-b));
-            pt1.y = cvRound(y0 + 1000*(a));
-            pt2.x = cvRound(x0 - 1000*(-b));
-            pt2.y = cvRound(y0 - 1000*(a));
-            line( dstHough, pt1, pt2, Scalar(0,0,255), 3);
-            printf("retta a rho: %f, theta: %f\n ", rho, theta);
-        }
+        // Find corners
+        /*
+        vector<Point> corners;
+        CpuAlgorithms::getInstance().findCorner(corner.data, corners, image->getWidth(), image->getHeight());
+        printf("cap %i\n", corners.size());
+        vector<int> groups;
+        time = CpuAlgorithms::getInstance().candidateGroups(corners, groups, corner, image->getWidth(), image->getHeight());
+        printf("gruppi: %i\n", groups.size());
+        printf("Tempo gruppi %f\n", time);
 
-        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-houghlines.jpg", dstHough);
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner-lines.jpg", corner);
+         */
 
-        */
+        // Find intersections between hough lines
+        vector<Point> intersectionPoints;
+        Mat sobelGray(image->getHeight(), image->getWidth(), CV_8UC1);
+        cvtColor(imageSobel, sobelGray, COLOR_BGR2GRAY);
+        time = CpuAlgorithms::getInstance().houghLinesIntersection(intersectionPoints, sobelGray);
+        printf(" - find hough lines intersections: %f seconds\n", time);
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-test.jpg", sobelGray);
+
+        // Find candidate corners
+        vector<Point> candidateCorners;
+        time = CpuAlgorithms::getInstance().findCandidateCorner(candidateCorners, corner.data, intersectionPoints, image->getWidth(), image->getHeight());
+        printf(" - find candidate groups: %f seconds\n", time);
+
+
+        // Find candidate groups
+        vector<int> candidateGroups;
+        time = CpuAlgorithms::getInstance().candidateGroups(candidateGroups, candidateCorners, corner, image->getWidth(), image->getHeight());
+        printf(" - find candidate corners: %f seconds\n", time);
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner-lines.jpg", corner);
+
         delete image;
         delete gaussianFilter;
         delete edgeDirection;
