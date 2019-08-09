@@ -115,7 +115,6 @@ int main(int argc, char **argv){
         cvtColor(imageSobel, sobelGray, COLOR_BGR2GRAY);
         time = CpuAlgorithms::getInstance().houghLinesIntersection(intersectionPoints, sobelGray);
         printf(" - find hough lines intersections: %f seconds\n", time);
-        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-test.jpg", sobelGray);
 
         // Find candidate corners
         vector<Point> candidateCorners;
@@ -134,14 +133,18 @@ int main(int argc, char **argv){
 
         printf(" - fill ratio: %f seconds\n", time);
 
-        line(image->getOpenCVImage(), matchFillRatio[0][0], matchFillRatio[0][1], Scalar(0, 0, 255), 4);
-        line(image->getOpenCVImage(), matchFillRatio[0][1], matchFillRatio[0][2], Scalar(0, 0, 255), 4);
+        if(matchFillRatio.size() > 0){
+            line(image->getOpenCVImage(), matchFillRatio[0][0], matchFillRatio[0][1], Scalar(0, 0, 255), 4);
 
-        line(image->getOpenCVImage(), matchFillRatio[0][2], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
+            line(image->getOpenCVImage(), matchFillRatio[0][1], matchFillRatio[0][2], Scalar(0, 0, 255), 4);
 
-        line(image->getOpenCVImage(), matchFillRatio[0][3], matchFillRatio[0][0], Scalar(0, 0, 255), 4);
+            line(image->getOpenCVImage(), matchFillRatio[0][2], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
 
-        imwrite(Parameters::getInstance().getProcessedImagesPath() + "door-found.jpg", image->getOpenCVImage());
+            line(image->getOpenCVImage(), matchFillRatio[0][3], matchFillRatio[0][0], Scalar(0, 0, 255), 4);
+        }
+
+
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-door-found.jpg", image->getOpenCVImage());
 
 
         delete image;
@@ -165,6 +168,8 @@ int main(int argc, char **argv){
 
         image = new Image();
         image->acquireImage();
+
+        Mat imageSobelOpenCV(image->getHeight(), image->getWidth(), CV_8UC3);
 
         cout << "\nAnalyze image from OpenCV:\n"
                 " - width: " << image->getWidth() << "\n" <<
@@ -258,6 +263,10 @@ int main(int argc, char **argv){
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-sobel.jpg", image->getOpenCVImage());
 
+        for (int k = 0; k < image->getWidth() * image->getHeight() * 3; ++k) {
+            imageSobelOpenCV.data[k] = image->getOpenCVImage().data[k];
+        }
+
         // Corner detection
         time = CudaInterface::harris(destinationSobelSuppressedGpu, destinationGaussianFilterGpu, image->getWidth(), image->getHeight(),
                               Parameters::getInstance().getConvolutionTwoDimKernelNumBlock(),
@@ -274,6 +283,43 @@ int main(int argc, char **argv){
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
 
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-corner.jpg", image->getOpenCVImage());
+
+
+        intersectionPoints.clear();
+        sobelGray.setTo(0);
+        cvtColor(imageSobelOpenCV, sobelGray, COLOR_BGR2GRAY);
+        time = CpuAlgorithms::getInstance().houghLinesIntersection(intersectionPoints, sobelGray);
+        printf(" - find hough lines intersections: %f seconds\n", time);
+
+        // Find candidate corners
+        candidateCorners.clear();
+        time = CpuAlgorithms::getInstance().findCandidateCorner(candidateCorners, image->getOpenCVImage().data, intersectionPoints, image->getWidth(), image->getHeight());
+        printf(" - find candidate corners: %f seconds\n", time);
+
+
+        // Find candidate groups
+        candidateGroups.clear();
+        time = CpuAlgorithms::getInstance().candidateGroups(candidateGroups, candidateCorners, corner, image->getWidth(), image->getHeight());
+        printf(" - find candidate groups: %f seconds\n", time);
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner-lines.jpg", corner);
+
+        matchFillRatio.clear();
+        time = CpuAlgorithms::getInstance().fillRatio(matchFillRatio,candidateGroups, imageSobelOpenCV.data, image->getWidth(), image->getHeight());
+
+        printf(" - fill ratio: %f seconds\n", time);
+
+        if(matchFillRatio.size() > 0){
+            line(image->getOpenCVImage(), matchFillRatio[0][0], matchFillRatio[0][1], Scalar(0, 0, 255), 4);
+
+            line(image->getOpenCVImage(), matchFillRatio[0][1], matchFillRatio[0][2], Scalar(0, 0, 255), 4);
+
+            line(image->getOpenCVImage(), matchFillRatio[0][2], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
+
+            line(image->getOpenCVImage(), matchFillRatio[0][0], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
+        }
+
+
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-door-found.jpg", image->getOpenCVImage());
 
         cudaFreeHost(imageSource);
         cudaFree(imageSourceGpu);
