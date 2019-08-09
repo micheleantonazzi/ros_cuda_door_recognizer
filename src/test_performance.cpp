@@ -120,14 +120,29 @@ int main(int argc, char **argv){
         // Find candidate corners
         vector<Point> candidateCorners;
         time = CpuAlgorithms::getInstance().findCandidateCorner(candidateCorners, corner.data, intersectionPoints, image->getWidth(), image->getHeight());
-        printf(" - find candidate groups: %f seconds\n", time);
+        printf(" - find candidate corners: %f seconds\n", time);
 
 
         // Find candidate groups
-        vector<int> candidateGroups;
+        vector<pair<vector<Point>, Mat*>> candidateGroups;
         time = CpuAlgorithms::getInstance().candidateGroups(candidateGroups, candidateCorners, corner, image->getWidth(), image->getHeight());
-        printf(" - find candidate corners: %f seconds\n", time);
+        printf(" - find candidate groups: %f seconds\n", time);
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner-lines.jpg", corner);
+
+        vector<vector<Point>> matchFillRatio;
+        time = CpuAlgorithms::getInstance().fillRatio(matchFillRatio,candidateGroups, imageSobel.data, image->getWidth(), image->getHeight());
+
+        printf(" - fill ratio: %f seconds\n", time);
+
+        line(image->getOpenCVImage(), matchFillRatio[0][0], matchFillRatio[0][1], Scalar(0, 0, 255), 4);
+        line(image->getOpenCVImage(), matchFillRatio[0][1], matchFillRatio[0][2], Scalar(0, 0, 255), 4);
+
+        line(image->getOpenCVImage(), matchFillRatio[0][2], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
+
+        line(image->getOpenCVImage(), matchFillRatio[0][3], matchFillRatio[0][0], Scalar(0, 0, 255), 4);
+
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "door-found.jpg", image->getOpenCVImage());
+
 
         delete image;
         delete gaussianFilter;

@@ -5,6 +5,7 @@
 #include <sensor_msgs/Image.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
+#include <thread>
 #include "cpu_algorithms.h"
 #include "../utilities/utilities.h"
 
@@ -418,7 +419,18 @@ double CpuAlgorithms::findCandidateCorner(vector<Point> &candidateCorners, unsig
     return Utilities::seconds() - time;
 }
 
-double CpuAlgorithms::candidateGroups(vector<int> &groups, vector<Point> &corners, Mat &image, int width, int height) {
+void drawLines(Mat *image, Point a, Point b, Point c, Point d){
+    image->setTo(0);
+
+    line(*image, a, b, Scalar(0, 0, 255), 4);
+    line(*image, b, c, Scalar(0, 0, 255), 4);
+
+    line(*image, c, d, Scalar(0, 0, 255), 4);
+
+    line(*image, d, a, Scalar(0, 0, 255), 4);
+}
+
+double CpuAlgorithms::candidateGroups(vector<pair<vector<Point>, Mat*>> &groups, vector<Point> &corners, Mat &image, int width, int height) {
 
     float diagonal = sqrt(width * width + height * height);
     float heightThresL = 0.5;
@@ -426,10 +438,12 @@ double CpuAlgorithms::candidateGroups(vector<int> &groups, vector<Point> &corner
     float widthThresH = 0.8;
     float widthThresL = 0.1;
     float directionThresL = 15;
-    float directionThresH = 85;
-    float parallelThres = 2.0;
+    float directionThresH = 87;
+    float parallelThres = 1.5;
     float ratioThresL = 2.0;
     float ratioThresH = 3.0;
+
+    vector<thread> threads;
 
     double time = Utilities::seconds();
     for (int i = 0; i < corners.size(); ++i) {
@@ -460,22 +474,245 @@ double CpuAlgorithms::candidateGroups(vector<int> &groups, vector<Point> &corner
                             abs(Dda - Dbc) < parallelThres && ratioThresL < (Sda + Sbc) / (Scd + Sab) &&
                             (Sda + Sbc) / (Scd + Sab) < ratioThresH) {
 
-                                printf("a: %i, %i, b: %i, %i, c: %i, %i, d: %i, %i\n", a.x, a.y, b.x, b.y,c.x, c.y, d.x, d.y);
-                                line( image, a, b, Scalar(0,0,255), 2);
-                                line( image, b, c, Scalar(0,0,255), 2);
+                                vector<Point> group;
+                                group.push_back(a);
+                                group.push_back(b);
+                                group.push_back(c);
+                                group.push_back(d);
 
-                                line( image, c, d, Scalar(0,0,255), 2);
+                                bool found = false;
+                                for (int j = 0; j < groups.size() && !found; ++j) {
+                                    vector<Point> oldGroup = groups[j].first;
+                                    Point p1 = group[0] - oldGroup[0];
+                                    Point p2 = group[1] - oldGroup[1];
+                                    Point p3 = group[2] - oldGroup[2];
+                                    Point p4 = group[3] - oldGroup[3];
+                                    if(abs(p1.x) < 5 && abs(p1.y) < 5 && abs(p2.x) < 5 && abs(p2.y) < 5 && abs(p3.x) < 5 &&
+                                            abs(p3.y) < 5 && abs(p4.x) < 5 && abs(p4.y) < 5)
+                                        found = true;
+                                }
 
-                                line( image, d, a, Scalar(0,0,255), 2);
+                                if(!found) {
+                                    Mat *poly = new Mat(height, width, CV_8UC3);
+                                    groups.push_back(pair<vector<Point>, Mat*>(group, poly));
+                                    //printf("a: %i, %i, b: %i, %i, c: %i, %i, d: %i, %i\n", a.x, a.y, b.x, b.y, c.x, c.y,
+                                      //     d.x, d.y);
+                                    threads.push_back(thread(drawLines, poly, a, b, c, d));
+                                    /*Mat im(height, width, CV_8UC3);
+                                    for (int j = 0; j < width * height * 3; ++j) {
+                                        im.data[j] = image.data[j];
+                                    }
+                                    line(im, a, b, Scalar(0, 0, 255), 4);
+                                    line(im, b, c, Scalar(0, 0, 255), 4);
 
-                                groups.push_back(1);
+                                    line(im, c, d, Scalar(0, 0, 255), 4);
+
+                                    line(im, d, a, Scalar(0, 0, 255), 4);
+                                    imshow("ciao", im);
+                                    waitKey(0);
+                                    */
+                                }
                             }
                         }
                     }
                 }
             }
-
         }
     }
+
+    for (int i = 0; i < threads.size(); ++i) {
+        threads[i].join();
+        //imshow("ciao", *(groups[i].second));
+        //waitKey(0);
+    }
     return Utilities::seconds() - time;
+}
+
+double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pair<vector<Point>, Mat *>> &groups, unsigned char *image, int width, int height) {
+
+    float FRThresL = 0.6;
+    float FRThrefH = 0.85;
+
+    double time = Utilities::seconds();
+
+    for (int i = 0; i < groups.size(); ++i) {
+        vector<Point> group = groups[i].first;
+        Mat *poly = groups[i].second;
+        //imshow("ciao", *poly);
+        //waitKey(0);
+
+        // AB line
+        int x = group[0].x, y = group[0].y;
+        int lenAB = 0, overlapAB = 0;
+        bool dir = false;
+        if (y < group[1].y)
+            dir = true;
+        while(x < group[1].x) {
+            bool foundNext = false;
+            int maskX = 1, maskY = 1;
+            while (!foundNext) {
+                if (dir && x + maskX < width) {
+                    for (int j = -maskY; j <= maskY && !foundNext; ++j) {
+                        if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
+                            foundNext = true;
+                            x += maskX;
+                            y += j;
+                            lenAB++;
+                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
+                                overlapAB++;
+                        }
+                    }
+                } else if (!dir && x + maskX < width) {
+                    for (int j = maskY; j >= -maskY && !foundNext; --j) {
+                        if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
+                            foundNext = true;
+                            x += maskX;
+                            y += j;
+                            lenAB++;
+                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
+                                overlapAB++;
+                        }
+                    }
+                }
+                maskX++;
+                maskY++;
+            }
+        }
+
+
+        // BC line
+        x = group[1].x, y = group[1].y;
+        int lenBC = 0, overlapBC = 0;
+        dir = false;
+        if (x < group[2].x)
+            dir = true;
+        while (y < group[2].y) {
+            bool foundNext = false;
+            int maskX = 1, maskY = 1;
+            while (!foundNext) {
+                if (dir && y + maskY < height) {
+                    for (int j = maskX; j >= -maskX && !foundNext; --j) {
+                        if (x + j >= 0 && x + j < width &&
+                        image[((y + maskY) * width + x + j) * 3] == 255) {
+                            foundNext = true;
+                            x += j;
+                            y += maskY;
+                            lenBC++;
+                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
+                                overlapBC++;
+                        }
+                    }
+                } else if (!dir && y + maskY < height) {
+                    for (int j = -maskX; j <= maskX && !foundNext; ++j) {
+                        if (x + j >= 0 && x + j < width &&
+                        image[((y + maskY) * width + x + j) * 3] == 255) {
+                            foundNext = true;
+                            x += j;
+                            y += maskY;
+                            lenBC++;
+                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
+                                overlapBC++;
+                        }
+                    }
+                }
+                maskX++;
+                maskY++;
+            }
+        }
+
+        // DC line ->
+        x = group[3].x, y = group[3].y;
+        int lenDC = 0, overlapDC = 0;
+        dir = false;
+        if (y < group[2].y)
+            dir = true;
+        while(x < group[2].x) {
+            bool foundNext = false;
+            int maskX = 1, maskY = 1;
+            while (!foundNext) {
+                if (dir && x + maskX < width) {
+                    for (int j = -maskY; j <= maskY && !foundNext; ++j) {
+                        if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
+                            foundNext = true;
+                            x += maskX;
+                            y += j;
+                            lenDC++;
+                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
+                                overlapDC++;
+                        }
+                    }
+                } else if (!dir && x + maskX < width) {
+                    for (int j = maskY; j >= -maskY && !foundNext; --j) {
+                        if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
+                            foundNext = true;
+                            x += maskX;
+                            y += j;
+                            lenDC++;
+                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
+                                overlapDC++;
+                        }
+                    }
+                }
+                maskX++;
+                maskY++;
+            }
+        }
+
+
+        // AD line
+        x = group[0].x, y = group[0].y;
+        int lenAD = 0, overlapAD = 0;
+        dir = false;
+        if (x < group[3].x)
+            dir = true;
+        while (y < group[3].y) {
+            bool foundNext = false;
+            int maskX = 1, maskY = 1;
+            while (!foundNext) {
+                if (dir && y + maskY < height) {
+                    for (int j = maskX; j >= -maskX && !foundNext; --j) {
+                        if (x + j >= 0 && x + j < width &&
+                            image[((y + maskY) * width + x + j) * 3] == 255) {
+                            foundNext = true;
+                            x += j;
+                            y += maskY;
+                            lenAD++;
+                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
+                                overlapAD++;
+                        }
+                    }
+                } else if (!dir && y + maskY < height) {
+                    for (int j = -maskX; j <= maskX && !foundNext; ++j) {
+                        if (x + j >= 0 && x + j < width &&
+                            image[((y + maskY) * width + x + j) * 3] == 255) {
+                            foundNext = true;
+                            x += j;
+                            y += maskY;
+                            lenAD++;
+                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
+                                overlapAD++;
+                        }
+                    }
+                }
+                maskX++;
+                maskY++;
+            }
+        }
+
+        //printf("%i %i %i %i %i %i %i %i\n", lenAB, overlapAB, lenBC, overlapBC, lenDC, overlapDC, lenAD, overlapAD);
+
+        float frAB = overlapAB * 1.0f / lenAB;
+        float frBC = overlapBC * 1.0f / lenBC;
+        float frAD = overlapAD * 1.0f / lenAD;
+        float frDC = overlapDC * 1.0f / lenDC;
+
+        if(frAB >= FRThresL && frBC >= FRThresL && frDC >= FRThresL && frAD >= FRThresL){
+            matchFillRatio.push_back(group);
+            //printf("trovato!\n");
+        }
+
+    }
+
+    return Utilities::seconds() - time;
+
 }

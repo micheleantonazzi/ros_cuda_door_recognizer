@@ -30,7 +30,8 @@ public:
     void harris(unsigned char *destination, unsigned char *source, unsigned char *imageSobel, int width, int height);
     double houghLinesIntersection(vector<Point> &points, Mat &image);
     double findCandidateCorner(vector<Point> &candidateCorners, unsigned char *image, vector<Point>& intersections, int width, int height);
-    double candidateGroups(vector<int> &groups, vector<Point>& corners, Mat &image, int width, int height);
+    double candidateGroups(vector<pair<vector<Point>, Mat*>> &groups, vector<Point>& corners, Mat &image, int width, int height);
+    double fillRatio(vector<vector<Point>>& matchFillRatio, vector<pair<vector<Point>, Mat*>> &groups, unsigned char *image, int width, int height);
 
 };
 
