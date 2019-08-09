@@ -61,7 +61,7 @@ public:
             int numBlocksTwoDimConvolution, int numThreadTwoDimConvolution, int numBlockLinear, int numThreadLinear);
 
     static void harris(Pixel *destination, float *sobelHorizontal, float *sobelVertical, float *sobelHorizontalVertical,
-                        float *sobelHorizontalSum, float *sobelVerticalSum, float *sobelHorizontalVerticalSum, int width, int height,
+                        float *sobelHorizontalSum, float *sobelVerticalSum, float *sobelHorizontalVerticalSum, float *finalCombination, int width, int height,
                          int numBlocksTwoDimConvolution, int numThreadTwoDimConvolution, int numBlockLinear, int numThreadLinear, cudaStream_t& stream);
 };
 

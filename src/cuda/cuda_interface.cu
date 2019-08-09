@@ -674,7 +674,7 @@ __global__ void harris_matrix_sum(float *matrixSum, float *matrix, int width, in
     }
 }
 
-__global__ void harris_final_combination(Pixel *destination, float *sobelHorizontalSum, float *sobelVerticalSum,
+__global__ void harris_final_combination(float *destination, float *sobelHorizontalSum, float *sobelVerticalSum,
         float *sobelHorizontalVerticalSum, int width, int height){
 
     int imageSize = width * height;
@@ -694,7 +694,79 @@ __global__ void harris_final_combination(Pixel *destination, float *sobelHorizon
         float value = (x * y - xy * xy) - 0.06f * ((x + y) * (x + y));
 
         if(value > 9000000)
-            *(destination + pos) = 255;
+            *(destination + pos) = value;
+        else
+            *(destination + pos) = 0;
+    }
+}
+
+__global__ void harris_non_maximum_suppression(Pixel *destination, float *matrix, int width, int height){
+
+    extern __shared__ float smem[];
+
+    int pixelPerThread = (width * height) / (gridDim.x * blockDim.x) + 1;
+
+    // First pixel of a block
+    int blockStart = blockDim.x * pixelPerThread * blockIdx.x;
+
+    // Load first values
+    if (threadIdx.x < 3 && blockStart + width * ((int) threadIdx.x - 1) < width * height && blockStart + width * ((int) threadIdx.x - 1) >= 0){
+
+        smem[(pixelPerThread * blockDim.x + 2) * threadIdx.x] = 0;
+        if(blockStart / width + ((int) threadIdx.x - 1) >= 0 && blockStart / width + ((int) threadIdx.x - 1) < height &&
+           blockStart % width - 1 >= 0){
+            smem[(pixelPerThread * blockDim.x + 2) * threadIdx.x] = *(matrix + blockStart + width * ((int) threadIdx.x - 1) - 1);
+        }
+    }
+
+    if(blockStart + threadIdx.x < width * height){
+        for (int i = 0; i < pixelPerThread && blockStart + (blockDim.x * i) + threadIdx.x < width * height; ++i) {
+            for(int y = -1; y < 2; y++){
+                if(blockStart + (blockDim.x * i) + threadIdx.x + width * y  < width * height &&
+                   (int) blockStart + ((int) blockDim.x * i) + (int) threadIdx.x + width * y  >= 0){
+                    smem[(1 + (blockDim.x * i) + threadIdx.x) + (blockDim.x * pixelPerThread + 2) * (y + 1)] =
+                            *(matrix + blockStart + (blockDim.x * i) + threadIdx.x + width * y);
+                }
+            }
+        }
+    }
+
+    // Load final part
+    if(threadIdx.x >= blockDim.x - 3){
+        int threadId = ((int) threadIdx.x + 3) % (int) blockDim.x;
+        int value = blockStart + blockDim.x * pixelPerThread - 1 + width * (threadId - 1);
+        if(value < width * height && value >= 0){
+            smem[2 + blockDim.x * pixelPerThread - 1 + (2 + blockDim.x * pixelPerThread) * threadId] = 0;
+            int start = blockStart + blockDim.x * pixelPerThread - 1;
+            if(start / width + (threadId - 1) >= 0 && start / width + (threadId - 1) >= 0 && start % width + 1 < width) {
+                smem[2 + blockDim.x * pixelPerThread - 1 + (2 + blockDim.x * pixelPerThread) * threadId] = *(matrix + value);
+            }
+        }
+    }
+
+    __syncthreads();
+
+    for (int i = 0; i < pixelPerThread && blockStart + (blockDim.x * i) + threadIdx.x < width * height; ++i) {
+
+        bool max = true;
+        int pos = blockStart + (blockDim.x * i) + threadIdx.x;
+        float value = *(matrix + pos);
+        if(value > 0){
+            for (int j = -1; j < 2 && max; ++j) {
+                for(int z = -1; z < 2 && max; z++){
+                    int row = (blockStart + (blockDim.x * i) + threadIdx.x) / width;
+                    int column = (blockStart + (blockDim.x * i) + threadIdx.x) % width;
+                    if(column + z >= 0 && column + z < width && row + j >= 0 && row + j < height){
+                        if(smem[(blockDim.x * i) + threadIdx.x + (j + 1) * (2 + blockDim.x * pixelPerThread) + (z + 1)] > value)
+                            max = false;
+                    }
+                }
+            }
+
+            if(max)
+                *(destination + pos) = 255 << 8;
+        }
+
     }
 }
 
@@ -711,7 +783,7 @@ double CudaInterface::harris(Pixel *destination, Pixel *source, int width, int h
         int numBlocksTwoDimConvolution, int numThreadTwoDimConvolution, int numBlockLinear, int numThreadLinear) {
 
     float *sobelHorizontal, *sobelVertical, *sobelHorizontalVertical,
-            *sobelHorizontalSum, *sobelVerticalSum, *sobelHorizontalVerticalSum;
+            *sobelHorizontalSum, *sobelVerticalSum, *sobelHorizontalVerticalSum, *finalCombination;
 
     cudaMalloc(&sobelHorizontal, width * height * sizeof(float));
     cudaMalloc(&sobelVertical, width * height * sizeof(float));
@@ -719,6 +791,8 @@ double CudaInterface::harris(Pixel *destination, Pixel *source, int width, int h
     cudaMalloc(&sobelHorizontalSum, width * height * sizeof(float));
     cudaMalloc(&sobelVerticalSum, width * height * sizeof(float));
     cudaMalloc(&sobelHorizontalVerticalSum, width * height * sizeof(float));
+    cudaMalloc(&finalCombination, width * height * sizeof(float));
+
 
     int sharedMemory = ((width * height) / (numBlocksTwoDimConvolution * numThreadTwoDimConvolution) + 1) * numThreadTwoDimConvolution * 3 + 6;
 
@@ -734,7 +808,9 @@ double CudaInterface::harris(Pixel *destination, Pixel *source, int width, int h
     harris_matrix_sum<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(float)>>>(sobelVerticalSum, sobelVertical, width, height);
     harris_matrix_sum<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(float)>>>(sobelHorizontalVerticalSum, sobelHorizontalVertical, width, height);
 
-    harris_final_combination<<<numBlockLinear, numThreadLinear>>>(destination, sobelHorizontalSum, sobelVerticalSum, sobelHorizontalVerticalSum, width, height);
+    harris_final_combination<<<numBlockLinear, numThreadLinear>>>(finalCombination, sobelHorizontalSum, sobelVerticalSum, sobelHorizontalVerticalSum, width, height);
+
+    harris_non_maximum_suppression<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(float)>>>(destination, finalCombination, width, height);
 
     cudaDeviceSynchronize();
     time = Utilities::seconds() - time;
@@ -745,12 +821,13 @@ double CudaInterface::harris(Pixel *destination, Pixel *source, int width, int h
     cudaFree(sobelHorizontalSum);
     cudaFree(sobelVerticalSum);
     cudaFree(sobelHorizontalVerticalSum);
+    cudaFree(finalCombination);
     return time;
 }
 
 void CudaInterface::harris(Pixel *destination, float *sobelHorizontal, float *sobelVertical, float *sobelHorizontalVertical,
-                           float *sobelHorizontalSum, float *sobelVerticalSum, float *sobelHorizontalVerticalSum, int width, int height,
-                           int numBlocksTwoDimConvolution, int numThreadTwoDimConvolution, int numBlockLinear,
+                           float *sobelHorizontalSum, float *sobelVerticalSum, float *sobelHorizontalVerticalSum, float *finalCombination,
+                           int width, int height, int numBlocksTwoDimConvolution, int numThreadTwoDimConvolution, int numBlockLinear,
                            int numThreadLinear, cudaStream_t& stream) {
 
     int sharedMemory = ((width * height) / (numBlocksTwoDimConvolution * numThreadTwoDimConvolution) + 1) * numThreadTwoDimConvolution * 3 + 6;
@@ -761,6 +838,7 @@ void CudaInterface::harris(Pixel *destination, float *sobelHorizontal, float *so
     harris_matrix_sum<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(float), stream>>>(sobelVerticalSum, sobelVertical, width, height);
     harris_matrix_sum<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(float), stream>>>(sobelHorizontalVerticalSum, sobelHorizontalVertical, width, height);
 
-    harris_final_combination<<<numBlockLinear, numThreadLinear, 0, stream>>>(destination, sobelHorizontalSum, sobelVerticalSum, sobelHorizontalVerticalSum, width, height);
+    harris_final_combination<<<numBlockLinear, numThreadLinear, 0, stream>>>(finalCombination, sobelHorizontalSum, sobelVerticalSum, sobelHorizontalVerticalSum, width, height);
 
+    harris_non_maximum_suppression<<<numBlocksTwoDimConvolution, numThreadTwoDimConvolution, sharedMemory * sizeof(float), stream>>>(destination, finalCombination, width, height);
 }

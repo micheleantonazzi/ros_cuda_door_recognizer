@@ -15,7 +15,7 @@ void readFrame(const sensor_msgs::Image::ConstPtr&, Publisher&, Publisher&);
 // Memory in gpu
 Pixel *imageSourceCanny, *imageSourceCorner, *imageCornerGpu, *imageSourceGpu, *grayScaleGpu, *gaussianImageGpu, *cannyImageGpu, *transposeImage;
 float *mask, *edgeGradient, *sobelHorizontal, *sobelVertical, *sobelHorizontalVertical,
-        *sobelHorizontalSum, *sobelVerticalSum, *sobelHorizontalVerticalSum;
+        *sobelHorizontalSum, *sobelVerticalSum, *sobelHorizontalVerticalSum, *finalCombination;
 int *edgeDirection;
 bool alloc = false;
 
@@ -64,6 +64,7 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherCa
         cudaMalloc(&sobelHorizontalSum, imageSize * sizeof(float));
         cudaMalloc(&sobelVerticalSum, imageSize * sizeof(float));
         cudaMalloc(&sobelHorizontalVerticalSum, imageSize * sizeof(float));
+        cudaMalloc(&finalCombination, imageSize * sizeof(float));
         cudaMallocHost(&imageSourceCorner, image->width * image->height * sizeof(Pixel));
         cudaMalloc(&imageCornerGpu, image->width * image->height * sizeof(Pixel));
         alloc = true;
@@ -122,7 +123,7 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherCa
     // HARRIS
     cudaStreamWaitEvent(streamHarris, cannyEnd, 0);
     CudaInterface::harris(imageCornerGpu, sobelHorizontal, sobelVertical, sobelHorizontalVertical, sobelHorizontalSum, sobelVerticalSum,
-            sobelHorizontalVerticalSum, image->width, image->height, Parameters::getInstance().getConvolutionTwoDimKernelNumBlock(),
+            sobelHorizontalVerticalSum, finalCombination, image->width, image->height, Parameters::getInstance().getConvolutionTwoDimKernelNumBlock(),
                           Parameters::getInstance().getConvolutionTwoDimKernelNumThread(), Parameters::getInstance().getLinearKernelNumBlock(),
                           Parameters::getInstance().getLinearKernelNumThread(), streamHarris);
 
