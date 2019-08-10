@@ -766,7 +766,6 @@ __global__ void harris_non_maximum_suppression(Pixel *destination, float *matrix
             if(max)
                 *(destination + pos) = 255 << 8;
         }
-
     }
 }
 

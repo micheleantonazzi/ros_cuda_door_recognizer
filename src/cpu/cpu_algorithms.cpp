@@ -301,7 +301,7 @@ void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, un
                 }
             }
 
-            if(currentValue > 9000000){
+            if(currentValue > 90000){
                 if(!max)
                     currentValue = 0;
                 else
@@ -547,7 +547,7 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         bool dir = false;
         if (y < group[1].y)
             dir = true;
-        while(x < group[1].x) {
+        while(x <= group[1].x) {
             bool foundNext = false;
             int maskX = 1, maskY = 1;
             while (!foundNext) {
@@ -586,7 +586,7 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         dir = false;
         if (x < group[2].x)
             dir = true;
-        while (y < group[2].y) {
+        while (y <= group[2].y) {
             bool foundNext = false;
             int maskX = 1, maskY = 1;
             while (!foundNext) {
@@ -626,7 +626,7 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         dir = false;
         if (y < group[2].y)
             dir = true;
-        while(x < group[2].x) {
+        while(x <= group[2].x) {
             bool foundNext = false;
             int maskX = 1, maskY = 1;
             while (!foundNext) {
@@ -665,7 +665,7 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         dir = false;
         if (x < group[3].x)
             dir = true;
-        while (y < group[3].y) {
+        while (y <= group[3].y) {
             bool foundNext = false;
             int maskX = 1, maskY = 1;
             while (!foundNext) {
@@ -706,7 +706,8 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         float frAD = overlapAD * 1.0f / lenAD;
         float frDC = overlapDC * 1.0f / lenDC;
 
-        if(frAB >= FRThresL && frBC >= FRThresL && frDC >= FRThresL && frAD >= FRThresL){
+        if(frAB >= FRThresL && frBC >= FRThresL && frDC >= FRThresL && frAD >= FRThresL &&
+                (frAB + frBC + frDC + frAD / 4) >= FRThrefH ){
             matchFillRatio.push_back(group);
             //printf("trovato!\n");
         }
