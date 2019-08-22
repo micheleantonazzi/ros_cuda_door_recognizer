@@ -68,6 +68,12 @@
     -->
     <arg name="gaussian_alpha" default="0.8" />
 
+    <!-- The following parameters are used to find a door starting from the filtered image
+         Their values can change based on characteristics of the camera and its position on the robot
+         To detect a door is used the combination of edge and corners found by Canny and Harris filters
+         In the first step are used only the corners, in order to find
+    -->
+
     <node pkg="ros_cuda_door_recognizer" type="test_performance" name="test_performance" output="screen">
         <param name="camera" value="$(arg camera)" />
         <param name="topic" value="$(arg topic)" />

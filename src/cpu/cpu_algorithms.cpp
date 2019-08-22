@@ -358,7 +358,7 @@ double CpuAlgorithms::houghLinesIntersection(vector<Point> &points, Mat &image) 
             float rho1 = lines[i][0], theta1 = lines[i][1], rho2 = lines[j][0], theta2 = lines[j][1];
             Point pt1, pt2, pt3, pt4;
             double a = cos(theta1), b = sin(theta1), c = cos(theta2), d = sin(theta2);
-            double x1 = a*rho1, y1 = b*rho1, x2 = c*rho2, y2 = d*rho2;
+            double x1 = a * rho1, y1 = b * rho1, x2 = c * rho2, y2 = d * rho2;
             pt1.x = cvRound(x1 + 1000*(-b));
             pt1.y = cvRound(y1 + 1000*(a));
             pt2.x = cvRound(x1 - 1000*(-b));
@@ -375,11 +375,11 @@ double CpuAlgorithms::houghLinesIntersection(vector<Point> &points, Mat &image) 
 
             float cross = d1.x * d2.y - d1.y * d2.x;
             if (abs(cross) >= 1e-8f){
-                Point r;
+                Point intersection;
                 double t1 = (x.x * d2.y - x.y * d2.x) / cross;
-                r = pt1 + d1 * t1;
-                if(r.x >= 0 && r.x < image.cols && r.y >= 0 && r.y < image.rows){
-                    points.push_back(r);
+                intersection = pt1 + d1 * t1;
+                if(intersection.x >= 0 && intersection.x < image.cols && intersection.y >= 0 && intersection.y < image.rows){
+                    points.push_back(intersection);
                 }
             }
         }
@@ -422,63 +422,63 @@ double CpuAlgorithms::findCandidateCorner(vector<Point> &candidateCorners, unsig
 void drawLines(Mat *image, Point a, Point b, Point c, Point d){
     image->setTo(0);
 
-    line(*image, a, b, Scalar(0, 0, 255), 4);
-    line(*image, b, c, Scalar(0, 0, 255), 4);
+    line(*image, a, b, Scalar(0, 0, 255), 3);
+    line(*image, b, c, Scalar(0, 0, 255), 3);
 
-    line(*image, c, d, Scalar(0, 0, 255), 4);
+    line(*image, c, d, Scalar(0, 0, 255), 3);
 
-    line(*image, d, a, Scalar(0, 0, 255), 4);
+    line(*image, d, a, Scalar(0, 0, 255), 3);
 }
 
 double CpuAlgorithms::candidateGroups(vector<pair<vector<Point>, Mat*>> &groups, vector<Point> &corners, Mat &image, int width, int height) {
 
     float diagonal = sqrt(width * width + height * height);
-    float heightThresL = 0.5;
-    float heightThresH = 0.9;
-    float widthThresH = 0.8;
-    float widthThresL = 0.1;
-    float directionThresL = 15;
-    float directionThresH = 87;
-    float parallelThres = 1.5;
-    float ratioThresL = 2.0;
-    float ratioThresH = 3.0;
+    float heightL = 0.5;
+    float heightH = 0.9;
+    float widthH = 0.8;
+    float widthL = 0.1;
+    float directionL = 15;
+    float directionH = 85;
+    float parallel = 1.5;
+    float ratioL = 2.0;
+    float ratioH = 3.0;
 
     vector<thread> threads;
 
     double time = Utilities::seconds();
     for (int i = 0; i < corners.size(); ++i) {
         for (int y = 0; y < corners.size(); ++y) {
-            Point a = corners[i];
-            Point b = corners[y];
-            float Sab = sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2)) / diagonal;
-            float Dab = atan(abs((1.0 * a.x - b.x)) / abs(1.0 * a.y - b.y)) * (180 / (float) M_PI);
+            Point C1 = corners[i];
+            Point C2 = corners[y];
+            float SC1C2 = sqrt(pow(C1.x - C2.x, 2) + pow(C1.y - C2.y, 2)) / diagonal;
+            float DC1C2 = atan(abs((1.0 * C1.x - C2.x)) / abs(1.0 * C1.y - C2.y)) * (180 / (float) M_PI);
 
-            if(i != y && a.x < b.x && widthThresL < Sab && Sab < widthThresH && Dab > directionThresH) {
+            if(i != y && C1.x < C2.x && widthL < SC1C2 && SC1C2 < widthH && DC1C2 > directionH) {
                 for (int z = 0; z < corners.size(); ++z) {
-                    Point c = corners[z];
-                    float Sbc = sqrt(pow(c.x - b.x, 2) + pow(c.y - b.y, 2)) / diagonal;
-                    float Dbc = atan(abs((1.0 * c.x - b.x)) / abs(1.0 * c.y - b.y)) * (180 / (float) M_PI);
+                    Point C3 = corners[z];
+                    float SC2C3 = sqrt(pow(C3.x - C2.x, 2) + pow(C3.y - C2.y, 2)) / diagonal;
+                    float DC2C3 = atan(abs((1.0 * C3.x - C2.x)) / abs(1.0 * C3.y - C2.y)) * (180 / (float) M_PI);
 
-                    if(y != z && b.y < c.y && a.x < c.x && a.y < c.y && heightThresL < Sbc && Sbc < heightThresH && Dbc < directionThresL) {
+                    if(y != z && C2.y < C3.y && C1.x < C3.x && C1.y < C3.y && heightL < SC2C3 && SC2C3 < heightH && DC2C3 < directionL) {
                         for (int t = 0; t < corners.size(); ++t) {
-                            Point d = corners[t];
+                            Point C4 = corners[t];
 
-                            float Scd = sqrt(pow(c.x - d.x, 2) + pow(c.y - d.y, 2)) / diagonal;
-                            float Dcd = atan(abs((1.0 * c.x - d.x)) / abs(1.0 * c.y - d.y)) * (180 / (float) M_PI);
+                            float SC3C4 = sqrt(pow(C3.x - C4.x, 2) + pow(C3.y - C4.y, 2)) / diagonal;
+                            float DC3C4 = atan(abs((1.0 * C3.x - C4.x)) / abs(1.0 * C3.y - C4.y)) * (180 / (float) M_PI);
 
-                            float Sda = sqrt(pow(d.x - a.x, 2) + pow(d.y - a.y, 2)) / diagonal;
-                            float Dda = atan(abs((1.0 * d.x - a.x)) / abs(1.0 * d.y - a.y)) * (180 / (float) M_PI);
-                            //printf("%f, %f\n", Sda, Dda);
-                            if (z != t && d.x < c.x && d.x < b.x && b.y < d.y && a.y < d.y && widthThresL < Scd && Scd < widthThresH && Dcd > directionThresH &&
-                            heightThresL < Sda && Sda < heightThresH && Dda < directionThresL &
-                            abs(Dda - Dbc) < parallelThres && ratioThresL < (Sda + Sbc) / (Scd + Sab) &&
-                            (Sda + Sbc) / (Scd + Sab) < ratioThresH) {
+                            float SC4C1 = sqrt(pow(C4.x - C1.x, 2) + pow(C4.y - C1.y, 2)) / diagonal;
+                            float DC4C1 = atan(abs((1.0 * C4.x - C1.x)) / abs(1.0 * C4.y - C1.y)) * (180 / (float) M_PI);
+                            //printf("%f, %f\n", SC4C1, DC4C1);
+                            if (z != t && C4.x < C3.x && C4.x < C2.x && C2.y < C4.y && C1.y < C4.y && widthL < SC3C4 && SC3C4 < widthH && DC3C4 > directionH &&
+                                heightL < SC4C1 && SC4C1 < heightH && DC4C1 < directionL &
+                                                                      abs(DC4C1 - DC2C3) < parallel && ratioL < (SC4C1 + SC2C3) / (SC3C4 + SC1C2) &&
+                                (SC4C1 + SC2C3) / (SC3C4 + SC1C2) < ratioH) {
 
                                 vector<Point> group;
-                                group.push_back(a);
-                                group.push_back(b);
-                                group.push_back(c);
-                                group.push_back(d);
+                                group.push_back(C1);
+                                group.push_back(C2);
+                                group.push_back(C3);
+                                group.push_back(C4);
 
                                 bool found = false;
                                 for (int j = 0; j < groups.size() && !found; ++j) {
@@ -487,27 +487,27 @@ double CpuAlgorithms::candidateGroups(vector<pair<vector<Point>, Mat*>> &groups,
                                     Point p2 = group[1] - oldGroup[1];
                                     Point p3 = group[2] - oldGroup[2];
                                     Point p4 = group[3] - oldGroup[3];
-                                    if(abs(p1.x) < 5 && abs(p1.y) < 5 && abs(p2.x) < 5 && abs(p2.y) < 5 && abs(p3.x) < 5 &&
-                                            abs(p3.y) < 5 && abs(p4.x) < 5 && abs(p4.y) < 5)
+                                    if((abs(p1.x) < 5 && abs(p1.y) < 5 && abs(p2.x) < 5 && abs(p2.y) < 5 && abs(p3.x) < 5 &&
+                                            abs(p3.y) < 5 && abs(p4.x) < 5 && abs(p4.y) < 5))
                                         found = true;
                                 }
 
                                 if(!found) {
                                     Mat *poly = new Mat(height, width, CV_8UC3);
                                     groups.push_back(pair<vector<Point>, Mat*>(group, poly));
-                                    //printf("a: %i, %i, b: %i, %i, c: %i, %i, d: %i, %i\n", a.x, a.y, b.x, b.y, c.x, c.y,
-                                      //     d.x, d.y);
-                                    threads.push_back(thread(drawLines, poly, a, b, c, d));
+                                    //printf("C1: %i, %i, C2: %i, %i, C3: %i, %i, C4: %i, %i\n", C1.x, C1.y, C2.x, C2.y, C3.x, C3.y,
+                                      //     C4.x, C4.y);
+                                    threads.push_back(thread(drawLines, poly, C1, C2, C3, C4));
                                     /*Mat im(height, width, CV_8UC3);
                                     for (int j = 0; j < width * height * 3; ++j) {
                                         im.data[j] = image.data[j];
                                     }
-                                    line(im, a, b, Scalar(0, 0, 255), 4);
-                                    line(im, b, c, Scalar(0, 0, 255), 4);
+                                    line(im, C1, C2, Scalar(0, 0, 255), 4);
+                                    line(im, C2, C3, Scalar(0, 0, 255), 4);
 
-                                    line(im, c, d, Scalar(0, 0, 255), 4);
+                                    line(im, C3, C4, Scalar(0, 0, 255), 4);
 
-                                    line(im, d, a, Scalar(0, 0, 255), 4);
+                                    line(im, C4, C1, Scalar(0, 0, 255), 4);
                                     imshow("ciao", im);
                                     waitKey(0);
                                     */
@@ -530,8 +530,14 @@ double CpuAlgorithms::candidateGroups(vector<pair<vector<Point>, Mat*>> &groups,
 
 double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pair<vector<Point>, Mat *>> &groups, unsigned char *image, int width, int height) {
 
-    float FRThresL = 0.6;
-    float FRThrefH = 0.85;
+    float fillRatioLOne = 0.6;
+    float fillRatioHOne = 0.85;
+
+    float fillRatioLTwo = 0.87;
+    float fillRatioHTwo = 0.9;
+
+    vector<vector<Point>> matchFillRatioOne;
+    vector<vector<Point>> matchFillRatioTwo;
 
     double time = Utilities::seconds();
 
@@ -541,9 +547,9 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         //imshow("ciao", *poly);
         //waitKey(0);
 
-        // AB line
+        // L12
         int x = group[0].x, y = group[0].y;
-        int lenAB = 0, overlapAB = 0;
+        int len12 = 0, overlap12 = 0;
         bool dir = false;
         if (y < group[1].y)
             dir = true;
@@ -557,9 +563,9 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                             foundNext = true;
                             x += maskX;
                             y += j;
-                            lenAB++;
+                            len12++;
                             if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
-                                overlapAB++;
+                                overlap12++;
                         }
                     }
                 } else if (!dir && x + maskX < width) {
@@ -568,9 +574,9 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                             foundNext = true;
                             x += maskX;
                             y += j;
-                            lenAB++;
+                            len12++;
                             if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
-                                overlapAB++;
+                                overlap12++;
                         }
                     }
                 }
@@ -580,9 +586,9 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         }
 
 
-        // BC line
+        // L23
         x = group[1].x, y = group[1].y;
-        int lenBC = 0, overlapBC = 0;
+        int len23 = 0, overlap23 = 0;
         dir = false;
         if (x < group[2].x)
             dir = true;
@@ -597,9 +603,9 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                             foundNext = true;
                             x += j;
                             y += maskY;
-                            lenBC++;
+                            len23++;
                             if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
-                                overlapBC++;
+                                overlap23++;
                         }
                     }
                 } else if (!dir && y + maskY < height) {
@@ -609,9 +615,9 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                             foundNext = true;
                             x += j;
                             y += maskY;
-                            lenBC++;
+                            len23++;
                             if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
-                                overlapBC++;
+                                overlap23++;
                         }
                     }
                 }
@@ -620,9 +626,9 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
             }
         }
 
-        // DC line ->
+        // L34
         x = group[3].x, y = group[3].y;
-        int lenDC = 0, overlapDC = 0;
+        int len34 = 0, overlap34 = 0;
         dir = false;
         if (y < group[2].y)
             dir = true;
@@ -636,9 +642,9 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                             foundNext = true;
                             x += maskX;
                             y += j;
-                            lenDC++;
+                            len34++;
                             if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
-                                overlapDC++;
+                                overlap34++;
                         }
                     }
                 } else if (!dir && x + maskX < width) {
@@ -647,9 +653,9 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                             foundNext = true;
                             x += maskX;
                             y += j;
-                            lenDC++;
+                            len34++;
                             if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
-                                overlapDC++;
+                                overlap34++;
                         }
                     }
                 }
@@ -659,9 +665,9 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         }
 
 
-        // AD line
+        // L41
         x = group[0].x, y = group[0].y;
-        int lenAD = 0, overlapAD = 0;
+        int len41 = 0, overlap41 = 0;
         dir = false;
         if (x < group[3].x)
             dir = true;
@@ -676,9 +682,9 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                             foundNext = true;
                             x += j;
                             y += maskY;
-                            lenAD++;
+                            len41++;
                             if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
-                                overlapAD++;
+                                overlap41++;
                         }
                     }
                 } else if (!dir && y + maskY < height) {
@@ -688,9 +694,9 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                             foundNext = true;
                             x += j;
                             y += maskY;
-                            lenAD++;
+                            len41++;
                             if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
-                                overlapAD++;
+                                overlap41++;
                         }
                     }
                 }
@@ -699,21 +705,54 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
             }
         }
 
-        //printf("%i %i %i %i %i %i %i %i\n", lenAB, overlapAB, lenBC, overlapBC, lenDC, overlapDC, lenAD, overlapAD);
+        //printf("%i %i %i %i %i %i %i %i\n", len12, overlap12, len23, overlap23, len34, overlap34, len41, overlap41);
 
-        float frAB = overlapAB * 1.0f / lenAB;
-        float frBC = overlapBC * 1.0f / lenBC;
-        float frAD = overlapAD * 1.0f / lenAD;
-        float frDC = overlapDC * 1.0f / lenDC;
+        float fr12 = overlap12 * 1.0f / len12;
+        float fr23 = overlap23 * 1.0f / len23;
+        float fr34 = overlap34 * 1.0f / len34;
+        float fr41 = overlap41 * 1.0f / len41;
 
-        if(frAB >= FRThresL && frBC >= FRThresL && frDC >= FRThresL && frAD >= FRThresL &&
-                (frAB + frBC + frDC + frAD / 4) >= FRThrefH ){
-            matchFillRatio.push_back(group);
+        // First threshold
+        if(fr12 >= fillRatioLOne && fr23 >= fillRatioLOne && fr34 >= fillRatioLOne && fr41 >= fillRatioLOne &&
+           (fr12 + fr23 + fr34 + fr41 / 4) >= fillRatioHOne){
+
+            // Check if this match group is inside another
+            bool found = false;
+            for (int y = 0; y < matchFillRatioOne.size() && !found; ++y) {
+                vector<Point> checkGroup = matchFillRatioOne.at(y);
+                if(checkGroup[0].x <= group[0].x && checkGroup[0].y <= group[0].y &&
+                        checkGroup[1].x >= group[1].x && checkGroup[1].y <= group[1].y &&
+                        checkGroup[2].x >= group[2].x && checkGroup[2].y >= group[2].y &&
+                        checkGroup[3].x <= group[3].x && checkGroup[3].y >= group[3].y)
+                    found = true;
+            }
+            if(!found)
+                matchFillRatioOne.push_back(group);
+
+            // Second threshold
+            if(fr12 >= fillRatioLTwo && fr23 >= fillRatioLTwo && fr34 >= fillRatioLTwo && fr41 >= fillRatioLTwo &&
+            (fr12 + fr23 + fr34 + fr41 / 4) >= fillRatioHTwo){
+                // Check if this match group is inside another
+                bool found = false;
+                for (int y = 0; y < matchFillRatioTwo.size() && !found; ++y) {
+                    vector<Point> checkGroup = matchFillRatioTwo.at(y);
+                    if(checkGroup[0].x <= group[0].x && checkGroup[0].y <= group[0].y &&
+                       checkGroup[1].x >= group[1].x && checkGroup[1].y <= group[1].y &&
+                       checkGroup[2].x >= group[2].x && checkGroup[2].y >= group[2].y &&
+                       checkGroup[3].x <= group[3].x && checkGroup[3].y >= group[3].y)
+                        found = true;
+                }
+                if(!found)
+                    matchFillRatioTwo.push_back(group);
+            }
             //printf("trovato!\n");
         }
-
     }
 
-    return Utilities::seconds() - time;
+    if(matchFillRatioOne.size() <= 1)
+        matchFillRatio = matchFillRatioOne;
+    else
+        matchFillRatio = matchFillRatioTwo;
 
+    return Utilities::seconds() - time;
 }

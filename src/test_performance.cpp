@@ -109,25 +109,26 @@ int main(int argc, char **argv){
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner-lines.jpg", corner);
          */
 
-        // Find intersections between hough lines
+        // Find intersections between hough lines in order to reduce the number of corners
         vector<Point> intersectionPoints;
         Mat sobelGray(image->getHeight(), image->getWidth(), CV_8UC1);
         cvtColor(imageSobel, sobelGray, COLOR_BGR2GRAY);
         time = CpuAlgorithms::getInstance().houghLinesIntersection(intersectionPoints, sobelGray);
         printf(" - find hough lines intersections: %f seconds\n", time);
 
-        // Find candidate corners
+        // Find candidate corners, only those near the intersection of hough lines
         vector<Point> candidateCorners;
         time = CpuAlgorithms::getInstance().findCandidateCorner(candidateCorners, corner.data, intersectionPoints, image->getWidth(), image->getHeight());
         printf(" - find candidate corners: %f seconds\n", time);
 
 
-        // Find candidate groups
+        // Find candidate groups composed by four corners
         vector<pair<vector<Point>, Mat*>> candidateGroups;
         time = CpuAlgorithms::getInstance().candidateGroups(candidateGroups, candidateCorners, corner, image->getWidth(), image->getHeight());
         printf(" - find candidate groups: %f seconds\n", time);
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner-lines.jpg", corner);
 
+        // Match the candidate groups with edges found with Canny filter
         vector<vector<Point>> matchFillRatio;
         time = CpuAlgorithms::getInstance().fillRatio(matchFillRatio,candidateGroups, imageSobel.data, image->getWidth(), image->getHeight());
 
@@ -168,6 +169,11 @@ int main(int argc, char **argv){
 
         image = new Image();
         image->acquireImage();
+
+        Mat doorFound(image->getHeight(), image->getWidth(), CV_8UC3);
+        for (int l = 0; l < image->getWidth() * image->getHeight() * 3; ++l) {
+            doorFound.data[l] = image->getOpenCVImage().data[l];
+        }
 
         Mat imageSobelOpenCV(image->getHeight(), image->getWidth(), CV_8UC3);
 
@@ -309,17 +315,16 @@ int main(int argc, char **argv){
         printf(" - fill ratio: %f seconds\n", time);
 
         if(matchFillRatio.size() > 0){
-            line(image->getOpenCVImage(), matchFillRatio[0][0], matchFillRatio[0][1], Scalar(0, 0, 255), 4);
+            line(doorFound, matchFillRatio[0][0], matchFillRatio[0][1], Scalar(0, 0, 255), 4);
 
-            line(image->getOpenCVImage(), matchFillRatio[0][1], matchFillRatio[0][2], Scalar(0, 0, 255), 4);
+            line(doorFound, matchFillRatio[0][1], matchFillRatio[0][2], Scalar(0, 0, 255), 4);
 
-            line(image->getOpenCVImage(), matchFillRatio[0][2], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
+            line(doorFound, matchFillRatio[0][2], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
 
-            line(image->getOpenCVImage(), matchFillRatio[0][0], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
+            line(doorFound, matchFillRatio[0][0], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
         }
 
-
-        imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-door-found.jpg", image->getOpenCVImage());
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-door-found.jpg", doorFound);
 
         cudaFreeHost(imageSource);
         cudaFree(imageSourceGpu);
