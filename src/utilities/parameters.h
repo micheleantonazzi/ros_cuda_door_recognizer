@@ -57,6 +57,24 @@ private:
 
     float gaussian_alpha;
 
+    float heightL;
+
+    float heightH;
+
+    float widthL;
+
+    float widthH;
+
+    float directionL;
+
+    float directionH;
+
+    float parallel;
+
+    float ratioL;
+
+    float ratioH;
+
     Parameters();
 
 public:
@@ -93,6 +111,24 @@ public:
     int getGaussianMaskSize();
 
     float getGaussianAlpha();
+
+    float getHeightL();
+
+    float getHeightH();
+
+    float getWidthL();
+
+    float getWidthH();
+
+    float getDirectionL();
+
+    float getDirectionH();
+
+    float getParallel();
+
+    float getRatioL();
+
+    float getRatioH();
 };
 
 

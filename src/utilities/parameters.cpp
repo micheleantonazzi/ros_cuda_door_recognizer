@@ -35,6 +35,17 @@ void Parameters::getValues() {
     nodeHandle.param<string>("processed_images_path", this->processed_images_path, "/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/processed_images/");
     nodeHandle.param<int>("gaussian_mask_size", this->gaussian_mask_size, 5);
     nodeHandle.param<float>("gaussian_alpha", this->gaussian_alpha, 0.84);
+    nodeHandle.param<float>("heightL", this->heightL, 0.5);
+    nodeHandle.param<float>("heightH", this->heightH, 0.9);
+    nodeHandle.param<float>("widthL", this->widthL, 0.1);
+    nodeHandle.param<float>("widthH", this->widthH, 0.8);
+    nodeHandle.param<float>("directionL", this->directionL, 15);
+    nodeHandle.param<float>("directionH", this->directionH, 85);
+    nodeHandle.param<float>("parallel", this->parallel, 1.5);
+    nodeHandle.param<float>("ratioL", this->ratioL, 2);
+    nodeHandle.param<float>("ratioH", this->ratioH, 3);
+
+
 }
 
 bool Parameters::usingCamera() {
@@ -90,4 +101,40 @@ int Parameters::getGaussianMaskSize() {
 
 float Parameters::getGaussianAlpha() {
     return this->gaussian_alpha;
+}
+
+float Parameters::getHeightL() {
+    return this->heightL;
+}
+
+float Parameters::getHeightH() {
+    return this->heightH;
+}
+
+float Parameters::getWidthL() {
+    return this->widthL;
+}
+
+float Parameters::getWidthH() {
+    return this->widthH;
+}
+
+float Parameters::getDirectionL() {
+    return this->directionL;
+}
+
+float Parameters::getDirectionH() {
+    return this->directionH;
+}
+
+float Parameters::getParallel() {
+    return this->parallel;
+}
+
+float Parameters::getRatioL() {
+    return this->ratioL;
+}
+
+float Parameters::getRatioH() {
+    return this->ratioH;
 }
