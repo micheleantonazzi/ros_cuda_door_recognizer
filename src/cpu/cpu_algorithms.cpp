@@ -430,18 +430,11 @@ void drawLines(Mat *image, Point a, Point b, Point c, Point d){
     line(*image, d, a, Scalar(0, 0, 255), 3);
 }
 
-double CpuAlgorithms::candidateGroups(vector<pair<vector<Point>, Mat*>> &groups, vector<Point> &corners, Mat &image, int width, int height) {
+double CpuAlgorithms::candidateGroups(vector<pair<vector<Point>, Mat*>> &groups, vector<Point> &corners, Mat &image, int width, int height,
+                                        float heightL, float heightH, float widthL, float widthH, float directionL, float directionH,
+                                        float parallel, float ratioL, float ratioH) {
 
     float diagonal = sqrt(width * width + height * height);
-    float heightL = 0.5;
-    float heightH = 0.9;
-    float widthH = 0.8;
-    float widthL = 0.1;
-    float directionL = 15;
-    float directionH = 85;
-    float parallel = 1.5;
-    float ratioL = 2.0;
-    float ratioH = 3.0;
 
     vector<thread> threads;
 
