@@ -13,7 +13,7 @@ The goal of the last two node (that analyze as quickly as possible the frame cap
 
 ## Algorithmic approach
 
-In order to detect a door, the program uses techniques of image processing. In this way some filters are applied to images captured by camera. The first step is to apply the Canny filter in order to find the edges in the image. To apply this filter is composed by some different steps:
+In order to detect a door, the program uses techniques of image processing. In this way some filters are applied to images captured by camera. The first step is to apply the Canny filter in order to find the edges in the image. This filter is composed by some different steps:
 
 * **gray scale:** first of all the image is converted in gray scale. The procedure is very simple: the values of each pixel are changed with an average obtained by the old values RGB
 
@@ -42,10 +42,10 @@ In order to detect a door, the program uses techniques of image processing. In t
   * **non maximum suppression:** the last step of the Canny filter is to identify an accurate edge value. In fact the edges found with Sobel filter is quite blurred and this technique suppresses all gradient values except the local maximum. The algorithm is quite simple and is composed by two step:
 
     * compare the value of the current pixel with the value of the two adjacent pixel in the edge direction
+    * if the value of the current pixel is the largest the pixel will be preserved, otherwise it will be suppressed (set to 0)
     
-  * if the value of the current pixel is the largest the pixel will be preserved, otherwise it will be suppressed (set to 0)
-  
     After that, the pixel value will set to 255 (white) if its value is higher than a limit, otherwise it will be deleted. This final control is useful to suppress noise-derived edges. This limit is empirically determined.  
+    
   
   The second step is to find the corners inside the image. In order to do this, Harris corner detector algorithm is implemented in CPU and GPU. This algorithm uses procedures similar than those used in Canny filter, they are:
   
@@ -66,10 +66,60 @@ In order to detect a door, the program uses techniques of image processing. In t
     * k is a constant empirically determined in interval [0.04, 0.06]
   
     Now, the pixel with a R value very high are corners 
+  
+  Finally are applied a particular algorithm in order to find a door starting from the filtered image. A door is found following a specific geometric model. This model consists of two horizontal lines and two vertical lines between four corners. This is the ideal geometric model but some corners of a door could be occluded. In case one of the horizontal lines must be outside the image and the previous model is wrong. In order to consider also the occluded door the geometric model is generalized by the four following assumption:
+  
+  1. at least two corners are visible in the image
+  2. all vertical lines are included in the image
+  3. vertical lines of a door must be almost perpendicular of horizontal axis of the image
+  4. a door in a image must be at least a certain width and a certain height
+  
+  Each corner and line in a door model has a specific name as shown in following figure, this is useful for explaining future steps.
+  
+  ![Door found](images/md/door-found.png)
+  
+  The second door is occluded, in particular corners C and D are outside the image, as the line L3. In order to recognize also the occluded door the image's borders are considered edges by the Canny filter and the intersection between an image border and a door vertical lines is considered a corner by Harris Corner Detector. The algorithm steps to find recognize a door using this geometric model are the following:
+  
+  * **find candidate corners:** to found a door is necessary to find all four-corner groups. In practice the number of this group is too large, so found and control all groups is impossible. Ideally, only corners near a long edge could be a real door corner. In order to reduce the number of corners applying this idea, the Hough Line Transform is used. Applied to an image manipulated with Canny filter, it is able to detect straight lines. After that, every intersection between two Hough lines are found: near these points could be candidate corners to found a door. Each corner too far to the intersection between two Hough lines are suppressed
+  
+  * **find the candidate groups:** now is the moment to find all four-corner groups and filter them in order to preserve those that respect the geometric model. A door model is composed by four corners C~1~, C~2~, C~3~, C~4~ and four lines L~12~, L~23~, L~34~, L~41~. Every corner C~i~ has the coordinate (x~i~, y~i~) and every line has a certain length. Is important to specify that the origin of the axes is the top-left corner of the image and all coordinates are positive. According with the geometric model, in particular with its third and fourth assumption, the directions and lengths of this four lines can be used to get the four-corner groups that could be a real door. To doing this, two new variable are necessary:
+  
+    * **S~ij~:** the ratio between the length of L~ij~ and the diagonal of the relative image. S~ij~ is defined by the following equation: ![](images/md/Sij.png) where DI is the diagonal length
+    * **D~ij~:** the direction of L~ij~ corresponding to the horizontal axis of the relative image. D~ij~ is defined by the following equation: ![](images/md/Dij.png)
+  
+    Using this new variables, each four-corner groups is kept as a candidate group if it meets all of the following geometric requirements:
+  
+    * according with the fouth assumption of the geometric model, each line has a certain with and height. So, S~ij~ should be in a certain range: 
+  
+      *heightL* < L~23~, L~41~ < *heightH*
+  
+      *widthL* < L~12~, L~34~ < *widthH*
+  
+    * L~12~ and L~34~ shuold be perpendicular with the vertical axis or, due to perspective deformation, could form a certain angle minor than 90 degrees with the vertical axis. But this angle should near 90 degrees, so: 
+  
+      D~12~, D~34~ > *directionH*
+  
+    * according with the third assumption, vertical lines of a door should be perpendicular with the horizontal axis, so they should form and angle with it near 0 degrees. In this way:
+  
+      D~23~, D~41~ < *directionL*
+  
+    * vertical lines of a door should be parallel, so:
+  
+      | D~23~ - D~41~ | < *parallel*
+  
+    * the ratio between the height and width of a door should be within a range:
+  
+      *ratioL* < (S~23~ + S~41~) / (S~12~ + S~34~) < *ratioH*
+  
+    These variables are set by default in the launch files. After that, the groups that have most of the area overlapped with other aren't considered
+  
+* **combine corners and edges:** with the previous step all the candidate groups that respect the geometric model are collected. Now is necessary to verify if there are four edges that connect the four corner. To doing this, the concept of *fill-ratio* must be defined. The four lines are impressed in the image with a mask with a thickness of 6 pixel. After that the overlap of these imaginary lines and the correspond edge found with Canny is measured. The *fill-ratio* is calculated with the following equation: ![Fill-ratio](images/md/fill-ratio.png) 
+
+  The four *fill-ratio* (one for each line of a door) must be larger than a threshold *ratioL* and the average of them must be larger than another threshold *ratioH*. After that, if there are more than one group, this control is repeated with two higher threshold
 
 ## Performance evaluation and profiling
 
-In this section the algorithms implemented in CPU and GPU are compared in order to measure the speedup achieved by the parallel implementation executed in GPU. Another interesting aspect to consider is the profiling of kernels, in order to in order to collect some metrics and measure their correctness. This metrics are:
+In this section the algorithms implemented in CPU and GPU are compared in order to measure the speedup achieved by the parallel implementation executed in GPU. In particular are examined the procedures used to implement Canny and Harris filters. Another interesting aspect to consider is the profiling of kernels, in order to in order to collect some metrics and measure their correctness. This metrics are:
 
 * **branch efficiency:** measures the percentage of branches that follow the main execution path. If its value is 100% the max efficiency is achieved, that means all the branches follow the same execution path
 * **achieved occupancy:** this metrics is about the number of active warp. Its range of values is between 0 and 1, where 1 represent the maximum and the high efficiency
