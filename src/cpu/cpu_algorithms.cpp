@@ -301,7 +301,7 @@ void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, un
                 }
             }
 
-            if(currentValue > 90000){
+            if(currentValue > 900000){
                 if(!max)
                     currentValue = 0;
                 else
