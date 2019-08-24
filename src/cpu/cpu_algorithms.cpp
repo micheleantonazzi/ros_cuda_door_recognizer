@@ -549,7 +549,7 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         while(x <= group[1].x) {
             bool foundNext = false;
             int maskX = 1, maskY = 1;
-            while (!foundNext) {
+            while (!foundNext && x + maskX < width) {
                 if (dir && x + maskX < width) {
                     for (int j = -maskY; j <= maskY && !foundNext; ++j) {
                         if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
@@ -578,7 +578,6 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
             }
         }
 
-
         // L23
         x = group[1].x, y = group[1].y;
         int len23 = 0, overlap23 = 0;
@@ -588,7 +587,7 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         while (y <= group[2].y) {
             bool foundNext = false;
             int maskX = 1, maskY = 1;
-            while (!foundNext) {
+            while (!foundNext && y + maskY < height) {
                 if (dir && y + maskY < height) {
                     for (int j = maskX; j >= -maskX && !foundNext; --j) {
                         if (x + j >= 0 && x + j < width &&
@@ -628,7 +627,7 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         while(x <= group[2].x) {
             bool foundNext = false;
             int maskX = 1, maskY = 1;
-            while (!foundNext) {
+            while (!foundNext && x + maskX < width) {
                 if (dir && x + maskX < width) {
                     for (int j = -maskY; j <= maskY && !foundNext; ++j) {
                         if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
@@ -667,7 +666,7 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         while (y <= group[3].y) {
             bool foundNext = false;
             int maskX = 1, maskY = 1;
-            while (!foundNext) {
+            while (!foundNext && y + maskY < height) {
                 if (dir && y + maskY < height) {
                     for (int j = maskX; j >= -maskX && !foundNext; --j) {
                         if (x + j >= 0 && x + j < width &&
