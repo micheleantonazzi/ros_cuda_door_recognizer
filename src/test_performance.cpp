@@ -124,7 +124,7 @@ int main(int argc, char **argv){
 
         // Find candidate groups composed by four corners
         vector<pair<vector<Point>, Mat*>> candidateGroups;
-        time = CpuAlgorithms::getInstance().candidateGroups(candidateGroups, candidateCorners, corner, image->getWidth(), image->getHeight(),
+        time = CpuAlgorithms::getInstance().candidateGroups(candidateGroups, candidateCorners, image->getWidth(), image->getHeight(),
                                                             Parameters::getInstance().getHeightL(), Parameters::getInstance().getHeightH(), Parameters::getInstance().getWidthL(),
                                                             Parameters::getInstance().getWidthH(), Parameters::getInstance().getDirectionL(),
                                                             Parameters::getInstance().getDirectionH(), Parameters::getInstance().getParallel(),
@@ -309,7 +309,7 @@ int main(int argc, char **argv){
 
         // Find candidate groups
         candidateGroups.clear();
-        time = CpuAlgorithms::getInstance().candidateGroups(candidateGroups, candidateCorners, corner, image->getWidth(), image->getHeight(),
+        time = CpuAlgorithms::getInstance().candidateGroups(candidateGroups, candidateCorners, image->getWidth(), image->getHeight(),
                                                             Parameters::getInstance().getHeightL(), Parameters::getInstance().getHeightH(), Parameters::getInstance().getWidthL(),
                                                             Parameters::getInstance().getWidthH(), Parameters::getInstance().getDirectionL(),
                                                             Parameters::getInstance().getDirectionH(), Parameters::getInstance().getParallel(),
