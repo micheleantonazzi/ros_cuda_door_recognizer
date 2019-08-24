@@ -55,7 +55,7 @@ In order to detect a door, the program uses techniques of image processing. In t
   
     * G<sub>xy</sub>[x]\[y] = G<sub>x</sub>[x]\[y] * G<sub>y</sub>[x]\[y]
     * G<sub>x^2</sub>[x]\[y] = G<sub>x</sub>[x]\[y] * G<sub>x</sub>[x]\[y] 
-    * G<sub>y^2</sub>[x]\[y] = G<sub>y<sub>[x]\[y] * G<sub>y</sub>[x]\[y] 
+    * G<sub>y^2</sub>[x]\[y] = G<sub>y</sub>[x]\[y] * G<sub>y</sub>[x]\[y] 
   
   * **compute the sums of the products of derivatives:** for each matrix found in previous step must be applied a 2D convolution with a particular kernel: in each position there is the value 1. In other words, each pixel is the result of the sum with its neighbors
   
