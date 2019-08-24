@@ -111,7 +111,7 @@ In order to detect a door, the program uses techniques of image processing. In t
   
       *ratioL* < (S<sub>23</sub> + S<sub>41</sub>) / (S<sub>12</sub> + S<sub>34</sub>) < *ratioH*
   
-    These variables are set by default in the launch files. After that, the groups that have most of the area overlapped with other aren't considered
+    These variables are set by default in the launch files. After that, the groups, that have most of the area overlapped with other, aren't considered
   
 * **combine corners and edges:** with the previous step all the candidate groups that respect the geometric model are collected. Now is necessary to verify if there are four edges that connect the four corner. To doing this, the concept of *fill-ratio* must be defined. The four lines are impressed in the image with a mask with a thickness of 6 pixel. After that the overlap of these imaginary lines and the correspond edge found with Canny is measured. The *fill-ratio* is calculated with the following equation: ![Fill-ratio](images/md/fill-ratio.png) 
 
