@@ -32,6 +32,7 @@ void Parameters::getValues() {
     nodeHandle.param<int>("convolution_two_dim_kernel_num_thread", this->convolution_two_dim_kernel_num_thread, 256);
     nodeHandle.param<bool>("show_edge_image", this->show_edge_image, true);
     nodeHandle.param<bool>("show_corner_image", this->show_corner_image, true);
+    nodeHandle.param<bool>("show_door_image", this->show_door_image, true);
     nodeHandle.param<string>("processed_images_path", this->processed_images_path, "/home/michele/catkin_ws/src/ros_cuda_door_recognizer/images/processed_images/");
     nodeHandle.param<int>("gaussian_mask_size", this->gaussian_mask_size, 5);
     nodeHandle.param<float>("gaussian_alpha", this->gaussian_alpha, 0.84);
@@ -89,6 +90,10 @@ bool Parameters::showEdgeImage() {
 
 bool Parameters::showCornerImage() {
     return this->show_corner_image;
+}
+
+bool Parameters::showDoorImage() {
+    return this->show_door_image;
 }
 
 string Parameters::getProcessedImagesPath() {

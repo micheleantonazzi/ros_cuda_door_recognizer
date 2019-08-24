@@ -50,6 +50,8 @@ private:
 
     bool show_corner_image;
 
+    bool show_door_image;
+
     // The path where to put the processed images
     string processed_images_path;
 
@@ -105,6 +107,8 @@ public:
     bool showEdgeImage();
     
     bool showCornerImage();
+
+    bool showDoorImage();
 
     string getProcessedImagesPath();
 
