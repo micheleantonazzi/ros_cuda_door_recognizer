@@ -29,7 +29,7 @@ In order to detect a door, the program uses techniques of image processing. In t
   
 * **Sobel filter**: this filter is able to find edges in a image. Its implementation is divided into two steps: 
 
-  * **calculate the derivative approximations:** to do this are applied to the image two convolution operation, using two different 3x3 masks, one for horizontal changes and one for vertical. The goal is calculate approximations of the horizontal and vertical derivatives. The results are two different matrix G~x~ and G~y~, obtained by following: 
+  * **calculate the derivative approximations:** to do this are applied to the image two convolution operation, using two different 3x3 masks, one for horizontal changes and one for vertical. The goal is calculate approximations of the horizontal and vertical derivatives. The results are two different matrix G<sub>x</sub> and G<sub>y</sub>, obtained by following: 
 
     ![Sobel bi-dimensional convolution](images/md/sobel_convolution.png)
 
@@ -49,20 +49,20 @@ In order to detect a door, the program uses techniques of image processing. In t
   
   The second step is to find the corners inside the image. In order to do this, Harris corner detector algorithm is implemented in CPU and GPU. This algorithm uses procedures similar than those used in Canny filter, they are:
   
-  * **calculate the derivative approximations:** this step is the same used in Sobel filter an it produces two matrix: G~x~ and G~y~
+  * **calculate the derivative approximations:** this step is the same used in Sobel filter an it produces two matrix: G<sub>x</sub> and G<sub>y</sub>
   
-  * **compute the products of the derivatives:** the result of this step is 3 matrix, G~x^2~, G~y^2~, G~xy~, where:  
+  * **compute the products of the derivatives:** the result of this step is 3 matrix, G<sub>x^2</sub>, G<sub>y^2</sub>, G<sub>xy</sub>, where:  
   
-    * G~xy~[x][y] = G~x~[x][y] * G~y~[x][y]
-    * G~x^2~[x][y] = G~x~[x][y] * G~x~[x][y] 
-    * G~y^2~[x][y] = G~y~[x][y] * G~y~[x][y] 
+    * G<sub>xy</sub>[x]\[y] = G<sub>x</sub>[x]\[y] * G<sub>y</sub>[x]\[y]
+    * G<sub>x^2</sub>[x]\[y] = G<sub>x</sub>[x]\[y] * G<sub>x</sub>[x]\[y] 
+    * G<sub>y^2</sub>[x]\[y] = G<sub>y<sub>[x]\[y] * G<sub>y</sub>[x]\[y] 
   
   * **compute the sums of the products of derivatives:** for each matrix found in previous step must be applied a 2D convolution with a particular kernel: in each position there is the value 1. In other words, each pixel is the result of the sum with its neighbors
   
   * **compute the Harris response:** the last step is to calculate, for each pixel, the formula `R = det(M) - k(trace(M))^2`, where:
   
     * M is the matrix: ![](images/md/matrix.png)
-    * trace(M) =  G~x^2~ + G~y^2~
+    * trace(M) =  G<sub>x^2</sub> + G<sub>y^2</sub>
     * k is a constant empirically determined in interval [0.04, 0.06]
   
     Now, the pixel with a R value very high are corners 
@@ -82,34 +82,34 @@ In order to detect a door, the program uses techniques of image processing. In t
   
   * **find candidate corners:** to found a door is necessary to find all four-corner groups. In practice the number of this group is too large, so found and control all groups is impossible. Ideally, only corners near a long edge could be a real door corner. In order to reduce the number of corners applying this idea, the Hough Line Transform is used. Applied to an image manipulated with Canny filter, it is able to detect straight lines. After that, every intersection between two Hough lines are found: near these points could be candidate corners to found a door. Each corner too far to the intersection between two Hough lines are suppressed
   
-  * **find the candidate groups:** now is the moment to find all four-corner groups and filter them in order to preserve those that respect the geometric model. A door model is composed by four corners C~1~, C~2~, C~3~, C~4~ and four lines L~12~, L~23~, L~34~, L~41~. Every corner C~i~ has the coordinate (x~i~, y~i~) and every line has a certain length. Is important to specify that the origin of the axes is the top-left corner of the image and all coordinates are positive. According with the geometric model, in particular with its third and fourth assumption, the directions and lengths of this four lines can be used to get the four-corner groups that could be a real door. To doing this, two new variable are necessary:
+  * **find the candidate groups:** now is the moment to find all four-corner groups and filter them in order to preserve those that respect the geometric model. A door model is composed by four corners C<sub>1</sub>, C<sub>2</sub>, C<sub>3</sub>, C<sub>4</sub> and four lines L<sub>12</sub>, L<sub>23</sub>, L<sub>34</sub>, L<sub>41</sub>. Every corner C<sub>i</sub> has the coordinate (x<sub>i</sub>, y<sub>i</sub>) and every line has a certain length. Is important to specify that the origin of the axes is the top-left corner of the image and all coordinates are positive. According with the geometric model, in particular with its third and fourth assumption, the directions and lengths of this four lines can be used to get the four-corner groups that could be a real door. To doing this, two new variable are necessary:
   
-    * **S~ij~:** the ratio between the length of L~ij~ and the diagonal of the relative image. S~ij~ is defined by the following equation: ![](images/md/Sij.png) where DI is the diagonal length
-    * **D~ij~:** the direction of L~ij~ corresponding to the horizontal axis of the relative image. D~ij~ is defined by the following equation: ![](images/md/Dij.png)
+    * **S<sub>ij</sub>:** the ratio between the length of L<sub>ij</sub> and the diagonal of the relative image. S<sub>ij</sub> is defined by the following equation: ![](images/md/Sij.png) where DI is the diagonal length
+    * **D<sub>ij</sub>:** the direction of L<sub>ij</sub> corresponding to the horizontal axis of the relative image. D<sub>ij</sub> is defined by the following equation: ![](images/md/Dij.png)
   
     Using this new variables, each four-corner groups is kept as a candidate group if it meets all of the following geometric requirements:
   
-    * according with the fouth assumption of the geometric model, each line has a certain with and height. So, S~ij~ should be in a certain range: 
+    * according with the fouth assumption of the geometric model, each line has a certain with and height. So, S<sub>ij</sub> should be in a certain range: 
   
-      *heightL* < L~23~, L~41~ < *heightH*
+      *heightL* < L<sub>23</sub>, L<sub>41</sub> < *heightH*
   
-      *widthL* < L~12~, L~34~ < *widthH*
+      *widthL* < L<sub>12</sub>, L<sub>34</sub> < *widthH*
   
-    * L~12~ and L~34~ shuold be perpendicular with the vertical axis or, due to perspective deformation, could form a certain angle minor than 90 degrees with the vertical axis. But this angle should near 90 degrees, so: 
+    * L<sub>12</sub> and L<sub>34</sub> shuold be perpendicular with the vertical axis or, due to perspective deformation, could form a certain angle minor than 90 degrees with the vertical axis. But this angle should near 90 degrees, so: 
   
-      D~12~, D~34~ > *directionH*
+      D<sub>12</sub>, D<sub>34</sub> > *directionH*
   
     * according with the third assumption, vertical lines of a door should be perpendicular with the horizontal axis, so they should form and angle with it near 0 degrees. In this way:
   
-      D~23~, D~41~ < *directionL*
+      D<sub>23</sub>, D<sub>41</sub> < *directionL*
   
     * vertical lines of a door should be parallel, so:
   
-      | D~23~ - D~41~ | < *parallel*
+      | D<sub>23</sub> - D<sub>41</sub> | < *parallel*
   
     * the ratio between the height and width of a door should be within a range:
   
-      *ratioL* < (S~23~ + S~41~) / (S~12~ + S~34~) < *ratioH*
+      *ratioL* < (S<sub>23</sub> + S<sub>41</sub>) / (S<sub>12</sub> + S<sub>34</sub>) < *ratioH*
   
     These variables are set by default in the launch files. After that, the groups that have most of the area overlapped with other aren't considered
   
