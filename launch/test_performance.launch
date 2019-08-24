@@ -68,11 +68,24 @@
     -->
     <arg name="gaussian_alpha" default="0.8" />
 
-    <!-- The following parameters are used to find a door starting from the filtered image
+    <!-- The following parameters are used to find a door starting from the filtered images
          Their values can change based on characteristics of the camera and its position on the robot
-         To detect a door is used the combination of edge and corners found by Canny and Harris filters
-         In the first step are used only the corners, in order to find
+         Please refer to the readme to learn their functionality
     -->
+
+    <arg name="heightL" default="0.5"/>
+    <arg name="heightH" default="0.9"/>
+
+    <arg name="widthL" default="0.1"/>
+    <arg name="widthH" default="0.8"/>
+
+    <arg name="directionL" default="15"/>
+    <arg name="directionH" default="85"/>
+
+    <arg name="parallel" default="1.5"/>
+
+    <arg name="ratioL" default="2"/>
+    <arg name="ratioH" default="3"/>
 
     <node pkg="ros_cuda_door_recognizer" type="test_performance" name="test_performance" output="screen">
         <param name="camera" value="$(arg camera)" />
@@ -87,5 +100,15 @@
         <param name="processed_images_path" value="$(arg processed_images_path)" />
         <param name="gaussian_mask_size" value="$(arg gaussian_mask_size)" />
         <param name="gaussian_alpha" value="$(arg gaussian_alpha)" />
+        <param name="heightL" value="$(arg heightL)" />
+        <param name="heightH" value="$(arg heightH)" />
+        <param name="widthL" value="$(arg widthL)" />
+        <param name="widthH" value="$(arg widthH)" />
+        <param name="directionL" value="$(arg directionL)" />
+        <param name="directionH" value="$(arg directionH)" />
+        <param name="parallel" value="$(arg parallel)" />
+        <param name="ratioL" value="$(arg ratioL)" />
+        <param name="ratioH" value="$(arg ratioH)" />
+
     </node>
 </launch>
