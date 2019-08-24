@@ -84,7 +84,7 @@ In order to detect a door, the program uses techniques of image processing. In t
   
   * **find the candidate groups:** now is the moment to find all four-corner groups and filter them in order to preserve those that respect the geometric model. A door model is composed by four corners C<sub>1</sub>, C<sub>2</sub>, C<sub>3</sub>, C<sub>4</sub> and four lines L<sub>12</sub>, L<sub>23</sub>, L<sub>34</sub>, L<sub>41</sub>. Every corner C<sub>i</sub> has the coordinate (x<sub>i</sub>, y<sub>i</sub>) and every line has a certain length. Is important to specify that the origin of the axes is the top-left corner of the image and all coordinates are positive. According with the geometric model, in particular with its third and fourth assumption, the directions and lengths of this four lines can be used to get the four-corner groups that could be a real door. To doing this, two new variable are necessary:
   
-    * **S<sub>ij</sub>:** the ratio between the length of L<sub>ij</sub> and the diagonal of the relative image. S<sub>ij</sub> is defined by the following equation: ![](images/md/Sij.png) where DI is the diagonal length
+    * **S<sub>ij</sub>:** the ratio between the length of L<sub>ij</sub> and the diagonal of the relative image. S<sub>ij</sub> is defined by the following equation: ![](images/md/Sij.png) where DI is the image's diagonal length
     * **D<sub>ij</sub>:** the direction of L<sub>ij</sub> corresponding to the horizontal axis of the relative image. D<sub>ij</sub> is defined by the following equation: ![](images/md/Dij.png)
   
     Using this new variables, each four-corner groups is kept as a candidate group if it meets all of the following geometric requirements:
