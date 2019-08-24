@@ -301,7 +301,7 @@ void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, un
                 }
             }
 
-            if(currentValue > 900000){
+            if(currentValue > 9000000){
                 if(!max)
                     currentValue = 0;
                 else
@@ -422,12 +422,12 @@ double CpuAlgorithms::findCandidateCorner(vector<Point> &candidateCorners, unsig
 void drawLines(Mat *image, Point a, Point b, Point c, Point d){
     image->setTo(0);
 
-    line(*image, a, b, Scalar(0, 0, 255), 3);
-    line(*image, b, c, Scalar(0, 0, 255), 3);
+    line(*image, a, b, Scalar(0, 0, 255), 4);
+    line(*image, b, c, Scalar(0, 0, 255), 4);
 
-    line(*image, c, d, Scalar(0, 0, 255), 3);
+    line(*image, c, d, Scalar(0, 0, 255), 4);
 
-    line(*image, d, a, Scalar(0, 0, 255), 3);
+    line(*image, d, a, Scalar(0, 0, 255), 4);
 }
 
 double CpuAlgorithms::candidateGroups(vector<pair<vector<Point>, Mat*>> &groups, vector<Point> &corners, int width, int height,
@@ -742,10 +742,100 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         }
     }
 
-    if(matchFillRatioOne.size() <= 1)
+    if(matchFillRatioOne.size() <= 1 || matchFillRatioTwo.size() == 0)
         matchFillRatio = matchFillRatioOne;
     else
         matchFillRatio = matchFillRatioTwo;
 
     return Utilities::seconds() - time;
+}
+
+void drawRectVerticalLine(unsigned char *image, int width, int height, const Point &p1, const Point &p2,
+                  Scalar scalar, unsigned char thickness){
+    for (int x = p1.y - thickness; x < p2.y + thickness; ++x) {
+        if (x >= 0 && x < height){
+            for (int z = -thickness; z <= thickness; ++z) {
+                if(p1.x + z >= 0 && p1.x + z < width){
+                    image[(x * width + p1.x + z) * 3] = scalar.val[0];
+                    image[(x * width + p1.x + z) * 3 + 1] = scalar.val[1];
+                    image[(x * width + p1.x + z) * 3 + 2] = scalar.val[2];
+                }
+            }
+        }
+
+    }
+}
+
+void drawRectHorizontalLine(unsigned char *image, int width, int height, const Point &p1, const Point &p2,
+                          Scalar scalar, unsigned char thickness){
+    for (int x = p1.x - thickness; x < p2.x + thickness; ++x) {
+        if(x >= 0 && x < width){
+            for (int z = -thickness; z <= thickness; ++z) {
+                if(p1.y + z >= 0 && p1.y + z < height){
+                    image[((p1.y + z) * width + x) * 3] = scalar.val[0];
+                    image[((p1.y + z) * width + x) * 3 + 1] = scalar.val[1];
+                    image[((p1.y + z) * width + x) * 3 + 2] = scalar.val[2];
+                }
+            }
+        }
+    }
+}
+
+void CpuAlgorithms::drawRectangle(const unsigned char *image, int width, int height, const Point &p1, const Point &p2, const Point &p3, const Point &p4,
+                                 Scalar scalar, unsigned char thickness) {
+
+    thickness /= 2;
+
+    Point A;
+    Point B;
+    Point C;
+    Point D;
+
+    if(p1.y <= p2.y){
+        A.y = p1.y;
+        B.y = p1.y;
+    } else {
+        A.y = p2.y;
+        B.y = p2.y;
+    }
+
+    if(p1.x <= p4.x){
+        A.x = p1.x;
+        D.x = p1.x;
+    } else {
+        A.x = p4.x;
+        D.x = p4.x;
+    }
+
+    if(p2.x > p3.x){
+        B.x = p2.x;
+        C.x = p2.x;
+    } else{
+        B.x = p3.x;
+        C.x = p3.x;
+    }
+
+    if(p3.y > p4.y){
+        C.y = p3.y;
+        D.y = p3.y;
+    } else{
+        C.y = p4.y;
+        D.y = p4.y;
+    }
+
+    thread threads[4];
+
+    threads[0] = thread(drawRectHorizontalLine, (unsigned char*) image, width, height, A, B, scalar, thickness);
+
+    threads[1] = thread(drawRectVerticalLine, (unsigned char*) image, width, height, B, C, scalar, thickness);
+
+    threads[2] = thread(drawRectHorizontalLine, (unsigned char*) image, width, height, D, C, scalar, thickness);
+
+    threads[3] = thread(drawRectVerticalLine, (unsigned char*) image, width, height, A, D, scalar, thickness);
+
+    threads[0].join();
+    threads[1].join();
+    threads[2].join();
+    threads[3].join();
+
 }

@@ -35,6 +35,7 @@ public:
                            float parallel, float ratioL, float ratioH);
     double fillRatio(vector<vector<Point>>& matchFillRatio, vector<pair<vector<Point>, Mat*>> &groups, unsigned char *image, int width, int height);
 
+    void drawRectangle(const unsigned char *image, int width, int height, const Point& p1, const Point& p2, const Point& p3, const Point& p4, Scalar scalar, unsigned char thickness);
 };
 
 
