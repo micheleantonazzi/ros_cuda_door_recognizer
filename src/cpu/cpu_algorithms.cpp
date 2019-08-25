@@ -406,7 +406,8 @@ double CpuAlgorithms::findCandidateCorner(vector<Point> &candidateCorners, unsig
                         G = *(cornerImage + (y * width + x) * 3 + 1);
                         R = *(cornerImage + (y * width + x) * 3 + 2);
                         if(B == 0 && G == 255 && R == 0){
-                            candidateCorners.push_back(Point(x, y));
+                            if(!(x < 5 && y < 5 || x >= width - 5 && y < 5 || x < 5 && y >= height - 5 || x >= width - 5 && y >= height - 5))
+                                candidateCorners.push_back(Point(x, y));
                             *(cornerImage + (y * width + x) * 3) = 0;
                             *(cornerImage + (y * width + x) * 3 + 1) = 0;
                             *(cornerImage + (y * width + x) * 3 + 2) = 0;
@@ -553,23 +554,23 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                 if (dir && x + maskX < width) {
                     for (int j = -maskY; j <= maskY && !foundNext; ++j) {
                         if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
+                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
+                                overlap12++;
                             foundNext = true;
                             x += maskX;
                             y += j;
                             len12++;
-                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
-                                overlap12++;
                         }
                     }
                 } else if (!dir && x + maskX < width) {
                     for (int j = maskY; j >= -maskY && !foundNext; --j) {
                         if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
+                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
+                                overlap12++;
                             foundNext = true;
                             x += maskX;
                             y += j;
                             len12++;
-                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
-                                overlap12++;
                         }
                     }
                 }
@@ -592,24 +593,26 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                     for (int j = maskX; j >= -maskX && !foundNext; --j) {
                         if (x + j >= 0 && x + j < width &&
                         image[((y + maskY) * width + x + j) * 3] == 255) {
+                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
+                                overlap23++;
                             foundNext = true;
                             x += j;
                             y += maskY;
                             len23++;
-                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
-                                overlap23++;
+
                         }
                     }
                 } else if (!dir && y + maskY < height) {
                     for (int j = -maskX; j <= maskX && !foundNext; ++j) {
                         if (x + j >= 0 && x + j < width &&
                         image[((y + maskY) * width + x + j) * 3] == 255) {
+                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
+                                overlap23++;
                             foundNext = true;
                             x += j;
                             y += maskY;
                             len23++;
-                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
-                                overlap23++;
+
                         }
                     }
                 }
@@ -631,23 +634,23 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                 if (dir && x + maskX < width) {
                     for (int j = -maskY; j <= maskY && !foundNext; ++j) {
                         if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
+                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
+                                overlap34++;
                             foundNext = true;
                             x += maskX;
                             y += j;
                             len34++;
-                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
-                                overlap34++;
                         }
                     }
                 } else if (!dir && x + maskX < width) {
                     for (int j = maskY; j >= -maskY && !foundNext; --j) {
                         if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
+                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
+                                overlap34++;
                             foundNext = true;
                             x += maskX;
                             y += j;
                             len34++;
-                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
-                                overlap34++;
                         }
                     }
                 }
@@ -671,24 +674,24 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                     for (int j = maskX; j >= -maskX && !foundNext; --j) {
                         if (x + j >= 0 && x + j < width &&
                             image[((y + maskY) * width + x + j) * 3] == 255) {
+                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
+                                overlap41++;
                             foundNext = true;
                             x += j;
                             y += maskY;
                             len41++;
-                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
-                                overlap41++;
                         }
                     }
                 } else if (!dir && y + maskY < height) {
                     for (int j = -maskX; j <= maskX && !foundNext; ++j) {
                         if (x + j >= 0 && x + j < width &&
                             image[((y + maskY) * width + x + j) * 3] == 255) {
+                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
+                                overlap41++;
                             foundNext = true;
                             x += j;
                             y += maskY;
                             len41++;
-                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
-                                overlap41++;
                         }
                     }
                 }
@@ -741,10 +744,12 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
         }
     }
 
-    if(matchFillRatioOne.size() <= 1 || matchFillRatioTwo.size() == 0)
+    if(matchFillRatioOne.size() <= 1)
         matchFillRatio = matchFillRatioOne;
-    else
+    else if (matchFillRatioTwo.size() > 0)
         matchFillRatio = matchFillRatioTwo;
+    else
+        matchFillRatio = matchFillRatioOne;
 
     return Utilities::seconds() - time;
 }
@@ -761,7 +766,6 @@ void drawRectVerticalLine(unsigned char *image, int width, int height, const Poi
                 }
             }
         }
-
     }
 }
 
