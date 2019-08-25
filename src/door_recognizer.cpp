@@ -97,7 +97,6 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherEd
     if(matchFillRatio.size() > 1 && Parameters::getInstance().showDoorImage()){
         CpuAlgorithms::getInstance().drawRectangle(image->data.data(), image->width, image->height, matchFillRatio[1][0], matchFillRatio[1][1],
                                                    matchFillRatio[1][2], matchFillRatio[1][3], Scalar(0, 0, 255), 4);
-        printf("trovati: %i\n", matchFillRatio.size());
     }
 
 
