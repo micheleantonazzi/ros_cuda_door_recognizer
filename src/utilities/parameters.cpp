@@ -45,8 +45,6 @@ void Parameters::getValues() {
     nodeHandle.param<float>("parallel", this->parallel, 1.5);
     nodeHandle.param<float>("ratioL", this->ratioL, 2);
     nodeHandle.param<float>("ratioH", this->ratioH, 3);
-
-
 }
 
 bool Parameters::usingCamera() {
