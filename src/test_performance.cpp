@@ -129,7 +129,7 @@ int main(int argc, char **argv){
                                                             Parameters::getInstance().getWidthH(), Parameters::getInstance().getDirectionL(),
                                                             Parameters::getInstance().getDirectionH(), Parameters::getInstance().getParallel(),
                                                             Parameters::getInstance().getRatioL(), Parameters::getInstance().getRatioH());
-        printf(" - find candidate groups: %f seconds\n", time);
+
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner-lines.jpg", corner);
 
         // Match the candidate groups with edges found with Canny filter
@@ -147,7 +147,6 @@ int main(int argc, char **argv){
 
             line(image->getOpenCVImage(), matchFillRatio[0][3], matchFillRatio[0][0], Scalar(0, 0, 255), 4);
         }
-
 
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-door-found.jpg", image->getOpenCVImage());
 
