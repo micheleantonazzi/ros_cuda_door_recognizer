@@ -7,15 +7,18 @@
 #include "cuda/cuda_interface.h"
 #include "utilities/parameters.h"
 #include "utilities/utilities.h"
+#include "cpu/cpu_algorithms.h"
 
 using namespace ros;
 
-void readFrame(const sensor_msgs::Image::ConstPtr&, Publisher&, Publisher&);
+void readFrame(const sensor_msgs::Image::ConstPtr&, Publisher&, Publisher&, Publisher&);
 
 // Memory in gpu
 Pixel *imageSourceCanny, *imageSourceCorner, *imageCornerGpu, *imageSourceGpu, *grayScaleGpu, *gaussianImageGpu, *cannyImageGpu, *transposeImage;
 float *mask, *edgeGradient, *sobelHorizontal, *sobelVertical, *sobelHorizontalVertical,
         *sobelHorizontalSum, *sobelVerticalSum, *sobelHorizontalVerticalSum, *finalCombination;
+
+unsigned char *cornerImage, *edgeImage;
 int *edgeDirection;
 bool alloc = false;
 
@@ -28,16 +31,19 @@ int main(int argc, char **argv) {
 
     NodeHandle node;
 
-    Publisher publisherCanny, publisherHarris;
+    Publisher publisherCanny, publisherHarris, publisherDoorFound;
 
     if(Parameters::getInstance().showEdgeImage())
-        publisherCanny = node.advertise<sensor_msgs::Image>("door_recognizer/edge_image", 10);
+        publisherCanny = node.advertise<sensor_msgs::Image>("door_recognizer/edge_image", 1);
 
     if(Parameters::getInstance().showCornerImage())
-        publisherHarris = node.advertise<sensor_msgs::Image>("door_recognizer/corner_image", 10);
+        publisherHarris = node.advertise<sensor_msgs::Image>("door_recognizer/corner_image", 1);
 
-    Subscriber subscriber = node.subscribe<sensor_msgs::Image>(Parameters::getInstance().getTopic(), 10,
-                                                               boost::bind(readFrame, _1, publisherCanny, publisherHarris));
+    if(Parameters::getInstance().showDoorImage())
+        publisherDoorFound = node.advertise<sensor_msgs::Image>("door_recognizer/door_found", 1);
+
+    Subscriber subscriber = node.subscribe<sensor_msgs::Image>(Parameters::getInstance().getTopic(), 1,
+                                                               boost::bind(readFrame, _1, publisherCanny, publisherHarris, publisherDoorFound));
 
     mask = Utilities::getGaussianArrayPinned(Parameters::getInstance().getGaussianMaskSize(),
                                              Parameters::getInstance().getGaussianAlpha());
@@ -48,7 +54,7 @@ int main(int argc, char **argv) {
 
 }
 
-void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherCanny, Publisher& publisherHarris){
+void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherCanny, Publisher& publisherHarris, Publisher& publisherDoorFound){
     if(!alloc){
         int imageSize = image->width * image->height;
         cudaMalloc(&imageSourceGpu, imageSize * sizeof(Pixel));
@@ -67,6 +73,8 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherCa
         cudaMalloc(&finalCombination, imageSize * sizeof(float));
         cudaMallocHost(&imageSourceCorner, image->width * image->height * sizeof(Pixel));
         cudaMalloc(&imageCornerGpu, image->width * image->height * sizeof(Pixel));
+        cornerImage = new unsigned char[image->width * image->height * 3];
+        edgeImage = new unsigned char[image->width * image->height * 3];
         alloc = true;
     }
 
@@ -75,6 +83,11 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherCa
     imageCornerFinal.height = image->height;
     imageCornerFinal.width = image->width;
     imageCornerFinal.encoding = image->encoding;
+
+    sensor_msgs::Image imageDoorFound(*image);
+    imageDoorFound.height = image->height;
+    imageDoorFound.width = image->width;
+    imageDoorFound.encoding = image->encoding;
 
     cudaStream_t streamCanny, streamHarris;
     cudaStreamCreateWithFlags(&streamCanny, cudaStreamNonBlocking);
@@ -129,17 +142,54 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherCa
 
     cudaMemcpyAsync(imageSourceCorner, imageCornerGpu, image->width * image->height * sizeof(Pixel), cudaMemcpyDeviceToHost, streamHarris);
 
-
+    // CANNY END
     cudaStreamSynchronize(streamCanny);
+    CudaInterface::pixelArrayToCharArray(edgeImage, imageSourceCanny, image->width, image->height);
 
     if(Parameters::getInstance().showEdgeImage()){
         CudaInterface::pixelArrayToCharArray((uint8_t*) image->data.data(), imageSourceCanny, image->width, image->height);
     }
 
+    // Find Hough lines and their intersection points
+    vector<Point> intersectionPoints;
+    Mat sobelGray(image->height, image->width, CV_8UC1);
+    for (int i = 0; i < image->width * image->height; ++i) {
+        sobelGray.data[i] = imageSourceCanny[i];
+    }
+
+    CpuAlgorithms::getInstance().houghLinesIntersection(intersectionPoints, sobelGray);
+
+    // HARRIS END
     cudaStreamSynchronize(streamHarris);
 
     if(Parameters::getInstance().showCornerImage()){
         CudaInterface::pixelArrayToCharArray((uint8_t*) imageCornerFinal.data.data(), imageSourceCorner, image->width, image->height);
+    }
+
+    // Find candidate corners, only those near the hough lines intersection
+    vector<Point> candidateCorners;
+    CudaInterface::pixelArrayToCharArray(cornerImage, imageSourceCorner, image->width, image->height);
+    CpuAlgorithms::getInstance().findCandidateCorner(candidateCorners, cornerImage, intersectionPoints, image->width, image->height);
+
+    // Find candidate groups composed by four corners
+    vector<pair<vector<Point>, Mat*>> candidateGroups;
+    CpuAlgorithms::getInstance().candidateGroups(candidateGroups, candidateCorners, image->width, image->height,
+                                                 Parameters::getInstance().getHeightL(), Parameters::getInstance().getHeightH(), Parameters::getInstance().getWidthL(),
+                                                 Parameters::getInstance().getWidthH(), Parameters::getInstance().getDirectionL(),
+                                                 Parameters::getInstance().getDirectionH(), Parameters::getInstance().getParallel(),
+                                                 Parameters::getInstance().getRatioL(), Parameters::getInstance().getRatioH());
+
+    // Match the candidate groups with edges found with Canny filter
+    vector<vector<Point>> matchFillRatio;
+    CpuAlgorithms::getInstance().fillRatio(matchFillRatio, candidateGroups, edgeImage, image->width, image->height);
+
+    for (int i = 0; i < candidateGroups.size(); ++i) {
+        delete candidateGroups[i].second;
+    }
+
+    if(matchFillRatio.size() > 0 && Parameters::getInstance().showDoorImage()){
+        CpuAlgorithms::getInstance().drawRectangle(imageDoorFound.data.data(), image->width, image->height, matchFillRatio[0][0], matchFillRatio[0][1],
+                                                   matchFillRatio[0][2], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
     }
 
     if(Parameters::getInstance().showEdgeImage())
@@ -147,6 +197,10 @@ void readFrame(const sensor_msgs::Image::ConstPtr& image, Publisher& publisherCa
 
     if(Parameters::getInstance().showCornerImage())
         publisherHarris.publish(imageCornerFinal);
+
+    if(Parameters::getInstance().showDoorImage()){
+        publisherDoorFound.publish(imageDoorFound);
+    }
 
     cudaStreamDestroy(streamCanny);
     cudaStreamDestroy(streamHarris);

@@ -139,7 +139,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(door_recognizer_gpu src/door_recognizer_gpu.cpp src/utilities/parameters.h src/utilities/parameters.cpp
-        src/utilities/utilities.h src/utilities/utilities.cpp)
+        src/utilities/utilities.h src/utilities/utilities.cpp src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp)
 
 add_executable(door_recognizer src/door_recognizer.cpp src/utilities/parameters.h src/utilities/parameters.cpp
         src/cpu/cpu_algorithms.h src/cpu/cpu_algorithms.cpp src/utilities/utilities.h src/utilities/utilities.cpp)
