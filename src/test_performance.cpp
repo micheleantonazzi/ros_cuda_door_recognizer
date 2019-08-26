@@ -80,6 +80,64 @@ int main(int argc, char **argv){
 
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-sobel.jpg", imageSobel);
 
+        // Harris corner detector
+        Mat corner(image->getHeight(), image->getWidth(), CV_8UC3);
+        for (int j = 0; j < image->getWidth() * image->getHeight() * 3; ++j) {
+            *(corner.data + j) = image->getOpenCVImage().data[j];
+
+        }
+
+        time = Utilities::seconds();
+        CpuAlgorithms::getInstance().harris(corner.data, imageGaussian.data, imageSobel.data, image->getWidth(),
+                                            image->getHeight());
+        time = Utilities::seconds() - time;
+
+        cout << " - Harris corner detection: " << time << "\n";
+
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner.jpg", corner);
+
+        // Find intersections between hough lines in order to reduce the number of corners
+        vector<Point> intersectionPoints;
+        Mat sobelGray(image->getHeight(), image->getWidth(), CV_8UC1);
+        cvtColor(imageSobel, sobelGray, COLOR_BGR2GRAY);
+        time = CpuAlgorithms::getInstance().houghLinesIntersection(intersectionPoints, sobelGray);
+        printf(" - find hough lines intersections: %f seconds\n", time);
+
+        // Find candidate corners, only those near the intersection of hough lines
+        vector<Point> candidateCorners;
+        time = CpuAlgorithms::getInstance().findCandidateCorner(candidateCorners, corner.data, intersectionPoints, image->getWidth(), image->getHeight());
+        printf(" - find candidate corners: %f seconds\n", time);
+
+
+        // Find candidate groups composed by four corners
+        vector<pair<vector<Point>, Mat*>> candidateGroups;
+        time = CpuAlgorithms::getInstance().candidateGroups(candidateGroups, candidateCorners, image->getWidth(), image->getHeight(),
+                                                            Parameters::getInstance().getHeightL(), Parameters::getInstance().getHeightH(), Parameters::getInstance().getWidthL(),
+                                                            Parameters::getInstance().getWidthH(), Parameters::getInstance().getDirectionL(),
+                                                            Parameters::getInstance().getDirectionH(), Parameters::getInstance().getParallel(),
+                                                            Parameters::getInstance().getRatioL(), Parameters::getInstance().getRatioH());
+
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner-lines.jpg", corner);
+
+        // Match the candidate groups with edges found with Canny filter
+        vector<vector<Point>> matchFillRatio;
+        time = CpuAlgorithms::getInstance().fillRatio(matchFillRatio,candidateGroups, imageSobel.data, image->getWidth(), image->getHeight());
+
+        printf(" - fill ratio: %f seconds\n", time);
+
+        if(matchFillRatio.size() > 0){
+            line(image->getOpenCVImage(), matchFillRatio[0][0], matchFillRatio[0][1], Scalar(0, 0, 255), 4);
+
+            line(image->getOpenCVImage(), matchFillRatio[0][1], matchFillRatio[0][2], Scalar(0, 0, 255), 4);
+
+            line(image->getOpenCVImage(), matchFillRatio[0][2], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
+
+            line(image->getOpenCVImage(), matchFillRatio[0][3], matchFillRatio[0][0], Scalar(0, 0, 255), 4);
+        }
+
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-door-found.jpg", image->getOpenCVImage());
+
+
         delete image;
         delete gaussianFilter;
         delete edgeDirection;
@@ -95,12 +153,19 @@ int main(int argc, char **argv){
                 " - Global memory size: " << deviceProp.totalGlobalMem / 1024 / 1024  << " MB\n"
                 " - Multiprocessors: " << deviceProp.multiProcessorCount << "\n"
                 " - Registers per multiprocessor: " << deviceProp.regsPerMultiprocessor << "\n"
-                " - Shared memory per multiprocessor: " << deviceProp.sharedMemPerMultiprocessor / 1024<< " KB\n";
+                " - Shared memory per multiprocessor: " << deviceProp.sharedMemPerMultiprocessor / 1024 << " KB\n";
 
         //GPU
 
         image = new Image();
         image->acquireImage();
+
+        Mat doorFound(image->getHeight(), image->getWidth(), CV_8UC3);
+        for (int l = 0; l < image->getWidth() * image->getHeight() * 3; ++l) {
+            doorFound.data[l] = image->getOpenCVImage().data[l];
+        }
+
+        Mat imageSobelOpenCV(image->getHeight(), image->getWidth(), CV_8UC3);
 
         cout << "\nAnalyze image from OpenCV:\n"
                 " - width: " << image->getWidth() << "\n" <<
@@ -126,8 +191,8 @@ int main(int argc, char **argv){
                                           image->getHeight(), Parameters::getInstance().getLinearKernelNumBlock(),
                                           Parameters::getInstance().getLinearKernelNumThread());
         cout << " - convert to gray scale: " << time << endl <<
-             "    - " << Parameters::getInstance().getConvolutionKernelNumBlock() <<
-             " blocks, " << Parameters::getInstance().getConvolutionKernelNumThread() <<
+             "    - " << Parameters::getInstance().getConvolutionOneDimKernelNumBlock() <<
+             " blocks, " << Parameters::getInstance().getConvolutionOneDimKernelNumThread() <<
              " thread" << endl;
 
         cudaMemcpy(imageSource, destinationGrayScaleGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
@@ -138,20 +203,24 @@ int main(int argc, char **argv){
 
         // ----------------- Apply Gaussian filter --------------- //
         Pixel *destinationGaussianFilterGpu;
+        Pixel *destinationSobelSuppressedGpu;
+        Pixel *destinationHarrisCornerGpu;
         cudaMalloc(&destinationGaussianFilterGpu, sizeof(Pixel) * sizeImage);
+        cudaMalloc(&destinationSobelSuppressedGpu, sizeof(Pixel) * sizeImage);
+        cudaMalloc(&destinationHarrisCornerGpu, sizeof(Pixel) * sizeImage);
 
         float *gaussianArray = Utilities::getGaussianArrayPinned(Parameters::getInstance().getGaussianMaskSize(),
                                                                  Parameters::getInstance().getGaussianAlpha());
 
         time = CudaInterface::gaussianFilter(destinationGaussianFilterGpu, destinationGrayScaleGpu, image->getWidth(), image->getHeight(),
                                       gaussianArray, Parameters::getInstance().getGaussianMaskSize(),
-                                             Parameters::getInstance().getConvolutionKernelNumBlock(),
-                                             Parameters::getInstance().getConvolutionKernelNumThread());
+                                             Parameters::getInstance().getConvolutionOneDimKernelNumBlock(),
+                                             Parameters::getInstance().getConvolutionOneDimKernelNumThread());
 
         cout << " - apply gaussian filter: " << time << endl <<
-                "    - " << Parameters::getInstance().getConvolutionKernelNumBlock() <<
-                " blocks, " << Parameters::getInstance().getConvolutionKernelNumThread() <<
-                " thread" << endl;
+             "    - " << Parameters::getInstance().getConvolutionOneDimKernelNumBlock() <<
+             " blocks, " << Parameters::getInstance().getConvolutionOneDimKernelNumThread() <<
+             " thread" << endl;
 
         cudaMemcpy(imageSource, destinationGaussianFilterGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
@@ -165,30 +234,91 @@ int main(int argc, char **argv){
         cudaMalloc(&edgeDirectionGpu, image->getWidth() * image->getHeight() * sizeof(int));
 
         time = CudaInterface::sobelFilter(edgeGradientGpu, edgeDirectionGpu, destinationGaussianFilterGpu, image->getWidth(), image->getHeight(),
-                                          Parameters::getInstance().getConvolutionKernelNumBlock(),
-                                          Parameters::getInstance().getConvolutionKernelNumThread(),
+                                          Parameters::getInstance().getConvolutionTwoDimKernelNumBlock(),
+                                          Parameters::getInstance().getConvolutionTwoDimKernelNumThread(),
                                           Parameters::getInstance().getLinearKernelNumBlock(),
                                           Parameters::getInstance().getLinearKernelNumThread());
 
         cout << " - apply sobel filter: " << time << "\n" <<
-                "    - convolution operation: " << Parameters::getInstance().getConvolutionKernelNumBlock() << " blocks, " <<
-                Parameters::getInstance().getConvolutionKernelNumThread() << " thread\n" <<
-                "    - linear operation: " << Parameters::getInstance().getLinearKernelNumBlock() << " blocks, " <<
-                Parameters::getInstance().getLinearKernelNumThread() << " thread" << endl;
+             "    - convolution operation: " << Parameters::getInstance().getConvolutionTwoDimKernelNumBlock() << " blocks, " <<
+             Parameters::getInstance().getConvolutionTwoDimKernelNumThread() << " thread\n" <<
+             "    - linear operation: " << Parameters::getInstance().getLinearKernelNumBlock() << " blocks, " <<
+             Parameters::getInstance().getLinearKernelNumThread() << " thread" << endl;
 
-        time = CudaInterface::nonMaximumSuppression(destinationGaussianFilterGpu, edgeGradientGpu, edgeDirectionGpu,
+        time = CudaInterface::nonMaximumSuppression(destinationSobelSuppressedGpu, edgeGradientGpu, edgeDirectionGpu,
                 image->getWidth(), image->getHeight(), Parameters::getInstance().getLinearKernelNumBlock(),
                                                     Parameters::getInstance().getLinearKernelNumThread());
 
         cout << " - non maximum suppression: " << time << "\n" <<
-             "    - convolution operation: " << Parameters::getInstance().getConvolutionKernelNumBlock() << " blocks, " <<
-             Parameters::getInstance().getConvolutionKernelNumThread() << " thread\n" <<
+             "    - convolution operation: " << Parameters::getInstance().getConvolutionOneDimKernelNumBlock() << " blocks, " <<
+                                                                                                                              Parameters::getInstance().getConvolutionOneDimKernelNumThread() << " thread\n" <<
              "    - linear operation: " << Parameters::getInstance().getLinearKernelNumBlock() << " blocks, " <<
              Parameters::getInstance().getLinearKernelNumThread() << " thread" << endl;
 
-        cudaMemcpy(imageSource, destinationGaussianFilterGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
+        cudaMemcpy(imageSource, destinationSobelSuppressedGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
         CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-sobel.jpg", image->getOpenCVImage());
+
+        for (int k = 0; k < image->getWidth() * image->getHeight() * 3; ++k) {
+            imageSobelOpenCV.data[k] = image->getOpenCVImage().data[k];
+        }
+
+        // Corner detection
+        time = CudaInterface::harris(destinationSobelSuppressedGpu, destinationGaussianFilterGpu, image->getWidth(), image->getHeight(),
+                              Parameters::getInstance().getConvolutionTwoDimKernelNumBlock(),
+                              Parameters::getInstance().getConvolutionTwoDimKernelNumThread(),
+                              Parameters::getInstance().getLinearKernelNumBlock(), Parameters::getInstance().getLinearKernelNumThread());
+
+        cout << " - Harris corner detector: " << time << "\n" <<
+             "    - convolution operation: " << Parameters::getInstance().getConvolutionTwoDimKernelNumBlock() << " blocks, " <<
+             Parameters::getInstance().getConvolutionTwoDimKernelNumThread() << " thread\n" <<
+             "    - linear operation: " << Parameters::getInstance().getLinearKernelNumBlock() << " blocks, " <<
+             Parameters::getInstance().getLinearKernelNumThread() << " thread" << endl;
+
+        cudaMemcpy(imageSource, destinationSobelSuppressedGpu, sizeImage * sizeof(Pixel), cudaMemcpyDeviceToHost);
+        CudaInterface::pixelArrayToCharArray(image->getOpenCVImage().data, imageSource, image->getWidth(), image->getHeight());
+
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-corner.jpg", image->getOpenCVImage());
+
+
+        intersectionPoints.clear();
+        sobelGray.setTo(0);
+        cvtColor(imageSobelOpenCV, sobelGray, COLOR_BGR2GRAY);
+        time = CpuAlgorithms::getInstance().houghLinesIntersection(intersectionPoints, sobelGray);
+        printf(" - find hough lines intersections: %f seconds\n", time);
+
+        // Find candidate corners
+        candidateCorners.clear();
+        time = CpuAlgorithms::getInstance().findCandidateCorner(candidateCorners, image->getOpenCVImage().data, intersectionPoints, image->getWidth(), image->getHeight());
+        printf(" - find candidate corners: %f seconds\n", time);
+
+
+        // Find candidate groups
+        candidateGroups.clear();
+        time = CpuAlgorithms::getInstance().candidateGroups(candidateGroups, candidateCorners, image->getWidth(), image->getHeight(),
+                                                            Parameters::getInstance().getHeightL(), Parameters::getInstance().getHeightH(), Parameters::getInstance().getWidthL(),
+                                                            Parameters::getInstance().getWidthH(), Parameters::getInstance().getDirectionL(),
+                                                            Parameters::getInstance().getDirectionH(), Parameters::getInstance().getParallel(),
+                                                            Parameters::getInstance().getRatioL(), Parameters::getInstance().getRatioH());
+        printf(" - find candidate groups: %f seconds\n", time);
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner-lines.jpg", corner);
+
+        matchFillRatio.clear();
+        time = CpuAlgorithms::getInstance().fillRatio(matchFillRatio,candidateGroups, imageSobelOpenCV.data, image->getWidth(), image->getHeight());
+
+        printf(" - fill ratio: %f seconds\n", time);
+
+        if(matchFillRatio.size() > 0){
+            line(doorFound, matchFillRatio[0][0], matchFillRatio[0][1], Scalar(0, 0, 255), 4);
+
+            line(doorFound, matchFillRatio[0][1], matchFillRatio[0][2], Scalar(0, 0, 255), 4);
+
+            line(doorFound, matchFillRatio[0][2], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
+
+            line(doorFound, matchFillRatio[0][0], matchFillRatio[0][3], Scalar(0, 0, 255), 4);
+        }
+
+        imwrite(Parameters::getInstance().getProcessedImagesPath() + "gpu-door-found.jpg", doorFound);
 
         cudaFreeHost(imageSource);
         cudaFree(imageSourceGpu);
@@ -197,5 +327,7 @@ int main(int argc, char **argv){
         cudaFreeHost(gaussianArray);
         cudaFree(edgeDirectionGpu);
         cudaFree(edgeGradientGpu);
+        cudaFree(destinationSobelSuppressedGpu);
+        cudaFree(destinationHarrisCornerGpu);
     }
 }

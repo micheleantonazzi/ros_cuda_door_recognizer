@@ -45,11 +45,10 @@ public:
     // To improve the performance are applied to the image four one-dimensional convolution,
     // two horizontal and two vertically
     static double sobelFilter(float *edgeGradient, int *edgeDirection, Pixel *source, int width, int height,
-            int numBlocksConvolution, int numThreadConvolution, int numBlockLinear, int numThreadLinear);
+            int numBlocksConvolutionTwoDim, int numThreadConvolutionTwoDim, int numBlockLinear, int numThreadLinear);
 
     static void sobelFilter(float *edgeGradient, int *edgeDirection, Pixel *source, float *sobelHorizontal,
-                            float *sobelVertical, float *transposeImage1, float * transposeImage2, int width, int height,
-                            int numBlocksConvolution, int numThreadConvolution, int numBlockLinear, int numThreadLinear,
+                            float *sobelVertical, int width, int height, int numBlocksConvolutionTwoDim, int numThreadConvolutionTwoDim, int numBlockLinear, int numThreadLinear,
                             cudaStream_t &stream);
 
     static double nonMaximumSuppression(Pixel *destination, float *edgeGradient, int *edgeDirection, int width, int height,
@@ -57,6 +56,13 @@ public:
 
     static void nonMaximumSuppression(Pixel *destination, float *edgeGradient, int *edgeDirection, int width, int height,
                                         int numBlocks, int numThread, cudaStream_t &stream);
+
+    static double harris(Pixel *destination, Pixel *source, int width, int height,
+            int numBlocksTwoDimConvolution, int numThreadTwoDimConvolution, int numBlockLinear, int numThreadLinear);
+
+    static void harris(Pixel *destination, float *sobelHorizontal, float *sobelVertical, float *sobelHorizontalVertical,
+                        float *sobelHorizontalSum, float *sobelVerticalSum, float *sobelHorizontalVerticalSum, float *finalCombination, int width, int height,
+                         int numBlocksTwoDimConvolution, int numThreadTwoDimConvolution, int numBlockLinear, int numThreadLinear, cudaStream_t& stream);
 };
 
 

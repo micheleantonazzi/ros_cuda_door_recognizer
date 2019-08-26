@@ -2,8 +2,10 @@
 // Created by michele on 07/07/19.
 //
 
-#include <stdint-gcc.h>
 #include <sensor_msgs/Image.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/opencv.hpp>
+#include <thread>
 #include "cpu_algorithms.h"
 #include "../utilities/utilities.h"
 
@@ -54,7 +56,7 @@ void CpuAlgorithms::gaussianFilter(unsigned char *destination, unsigned char *so
             for (int k = -matrixDim / 2; k <= matrixDim / 2; ++k) {
                 for (int z = -matrixDim / 2; z <= matrixDim / 2; ++z) {
                     if(i + k >= 0 && i + k < height &&
-                            j + z >= 0 && j + z < width) {
+                       j + z >= 0 && j + z < width) {
                         value += *(source + ((i + k) * width + j + z) * 3) * matrix[(k + matrixDim / 2) * matrixDim + (z + matrixDim / 2)];
                     }
                 }
@@ -134,6 +136,7 @@ void CpuAlgorithms::sobel(float *edgeGradient, int *edgeDirection, unsigned char
     delete(sobelVertical);
 }
 
+
 void CpuAlgorithms::nonMaximumSuppression(unsigned char *destination, float *edgeGradient, int *edgeDirection, int width, int height) {
 
     for (int i = 0; i < height; ++i) {
@@ -155,16 +158,17 @@ void CpuAlgorithms::nonMaximumSuppression(unsigned char *destination, float *edg
                     second = *(edgeGradient + (i + 1) * width + j);
             }
             else if(dir == 45){
-                if(i - 1 >= 0 && j + 1 < width)
-                    first = *(edgeGradient + (i - 1) * width + j + 1);
-                if(i + 1 < height && j - 1 >= 0)
-                    second = *(edgeGradient + (i + 1) * width + j - 1);
-            }
-            else if(dir == 135){
                 if(i + 1 < height && j + 1 < width)
                     first = *(edgeGradient + (i + 1) * width + j + 1);
                 if(i - 1 >= 0 && j - 1 >= 0)
                     second = *(edgeGradient + (i - 1) * width + j - 1);
+
+            }
+            else if(dir == 135){
+                if(i - 1 >= 0 && j + 1 < width)
+                    first = *(edgeGradient + (i - 1) * width + j + 1);
+                if(i + 1 < height && j - 1 >= 0)
+                    second = *(edgeGradient + (i + 1) * width + j - 1);
             }
 
             float currentValue = *(edgeGradient + i * width + j);
@@ -181,4 +185,640 @@ void CpuAlgorithms::nonMaximumSuppression(unsigned char *destination, float *edg
             *(destination + (i * width + j) * 3 + 2)  = currentValue;
         }
     }
+}
+
+void CpuAlgorithms::harris(unsigned char *destination, unsigned char *source, unsigned char *imageSobel, int width, int height) {
+    int maskDim = 3;
+    int *sobelMaskHorizontal = Utilities::getSobelMaskHorizontal();
+
+    float *sobelHorizontal = new float[width * height];
+
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            float value = 0;
+            for (int k = -maskDim / 2; k <= maskDim / 2; ++k) {
+                for (int z = -maskDim / 2; z <= maskDim / 2; ++z) {
+                    if(i + k >= 0 && i + k < height &&
+                       j + z >= 0 && j + z < width) {
+                        value += *(source + ((i + k) * width + j + z) * 3) * sobelMaskHorizontal[(k + maskDim / 2) * maskDim + (z + maskDim / 2)];
+                    }
+                }
+            }
+
+            *(sobelHorizontal + i * width + j) = value;
+        }
+    }
+
+    int *sobelMaskVertical = Utilities::getSobelMaskVertical();
+    float *sobelVertical = new float[width * height];
+
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            float value = 0;
+            for (int k = -maskDim / 2; k <= maskDim / 2; ++k) {
+                for (int z = -maskDim / 2; z <= maskDim / 2; ++z) {
+                    if(i + k >= 0 && i + k < height &&
+                       j + z >= 0 && j + z < width) {
+                        value += *(source + ((i + k) * width + j + z) * 3) * sobelMaskVertical[(k + maskDim / 2) * maskDim + (z + maskDim / 2)];
+                    }
+                }
+            }
+
+            *(sobelVertical + i * width + j) = value;
+        }
+    }
+
+    double time = Utilities::seconds();
+
+    float *sobelHorizontal2 = new float[width * height];
+    float *sobelVertical2 = new float[width * height];
+    float *sobelHorizontalVertical = new float[width * height];
+
+    // corner detection
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            float x = *(sobelHorizontal + i * width + j);
+            float y = *(sobelVertical + i * width + j);
+
+            *(sobelHorizontal2 + i * width + j) = x * x;
+            *(sobelVertical2 + i * width + j) = y * y;
+            *(sobelHorizontalVertical + i * width + j) = x * y;
+        }
+    }
+
+    float *sobelHorizontal2Sum = new float[width * height];
+    float *sobelVertical2Sum = new float[width * height];
+    float *sobelHorizontalVerticalSum = new float[width * height];
+
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            float valueX = 0;
+            float valueY = 0;
+            float valueXY = 0;
+            for (int k = -1; k <= 1; ++k) {
+                for (int z = -1; z <= 1; ++z) {
+                    if(i + k >= 0 && i + k < height &&
+                       j + z >= 0 && j + z < width) {
+                        valueX += *(sobelHorizontal2 + ((i + k) * width + j + z));
+                        valueY += *(sobelVertical2 + ((i + k) * width + j + z));
+                        valueXY += *(sobelHorizontalVertical + ((i + k) * width + j + z));
+                    }
+                }
+            }
+
+            *(sobelHorizontal2Sum + i * width + j) = valueX;
+            *(sobelVertical2Sum + i * width + j) = valueY;
+            *(sobelHorizontalVerticalSum + i * width + j) = valueXY;
+        }
+    }
+
+    float *corners = new float[width * height];
+
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            float x = *(sobelHorizontal2Sum + i * width + j);
+            float y = *(sobelVertical2Sum + i * width + j);
+            float xy = *(sobelHorizontalVerticalSum + i * width + j);
+
+            *(corners + i * width + j) = (x * y - xy * xy) - 0.06f * ((x + y) * (x + y));
+        }
+    }
+
+    float *cornerSuppressed = new float[width * height];
+
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            float max = true;
+            float currentValue = *(corners + i * width + j);
+
+            for (int k = -1; k <= 1 && max; ++k) {
+                for (int z = -1; z <= 1 && max; ++z) {
+                    if(i + k >= 0 && i + k < height &&
+                       j + z >= 0 && j + z < width) {
+                        if(currentValue < *(corners + ((i + k) * width + j + z)))
+                            max = false;
+                    }
+                }
+            }
+
+            if(currentValue > 9000000){
+                if(!max)
+                    currentValue = 0;
+                else
+                    currentValue = 255;
+            } else
+                currentValue = 0;
+
+            *(cornerSuppressed + (i * width + j)) = currentValue;
+        }
+    }
+
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            float r = *(cornerSuppressed + i * width + j);
+            unsigned  char final;
+            if(r == 0){
+                final = *(imageSobel + (i * width + j)*3);
+                *(destination + (i * width + j) * 3) = final;
+                *(destination + (i * width + j) * 3 + 1) = final;
+                *(destination + (i * width + j) * 3 + 2) = final;
+            }
+
+            else{
+                *(destination + (i * width + j) * 3) = 0;
+                *(destination + (i * width + j) * 3 + 1) = 255;
+                *(destination + (i * width + j) * 3 + 2) = 0;
+            }
+
+        }
+    }
+
+    delete(sobelMaskHorizontal);
+    delete(sobelMaskVertical);
+    delete(sobelHorizontal);
+    delete(sobelVertical);
+    delete(cornerSuppressed);
+    delete(corners);
+    delete(sobelHorizontal2);
+    delete(sobelHorizontal2Sum);
+    delete(sobelVertical2);
+    delete(sobelVertical2Sum);
+    delete(sobelHorizontalVertical);
+    delete(sobelHorizontalVerticalSum);
+}
+
+double CpuAlgorithms::houghLinesIntersection(vector<Point> &points, Mat &image) {
+    vector<Vec2f> lines;
+
+    double time = Utilities::seconds();
+
+    HoughLines(image, lines, 1, CV_PI/180, 110, 0, 0 );
+    for (int i = 0; i < lines.size() - 1; ++i) {
+        for (int j = i + 1; j < lines.size(); ++j) {
+            float rho1 = lines[i][0], theta1 = lines[i][1], rho2 = lines[j][0], theta2 = lines[j][1];
+            Point pt1, pt2, pt3, pt4;
+            double a = cos(theta1), b = sin(theta1), c = cos(theta2), d = sin(theta2);
+            double x1 = a * rho1, y1 = b * rho1, x2 = c * rho2, y2 = d * rho2;
+            pt1.x = cvRound(x1 + 1000*(-b));
+            pt1.y = cvRound(y1 + 1000*(a));
+            pt2.x = cvRound(x1 - 1000*(-b));
+            pt2.y = cvRound(y1 - 1000*(a));
+
+            pt3.x = cvRound(x2 + 1000*(-d));
+            pt3.y = cvRound(y2 + 1000*(c));
+            pt4.x = cvRound(x2 - 1000*(-d));
+            pt4.y = cvRound(y2 - 1000*(c));
+
+            Point x = pt3 - pt1;
+            Point d1 = pt2 - pt1;
+            Point d2 = pt4 - pt3;
+
+            float cross = d1.x * d2.y - d1.y * d2.x;
+            if (abs(cross) >= 1e-8f){
+                Point intersection;
+                double t1 = (x.x * d2.y - x.y * d2.x) / cross;
+                intersection = pt1 + d1 * t1;
+                if(intersection.x >= 0 && intersection.x < image.cols && intersection.y >= 0 && intersection.y < image.rows){
+                    points.push_back(intersection);
+                }
+            }
+        }
+    }
+
+    return Utilities::seconds() - time;
+}
+
+double CpuAlgorithms::findCandidateCorner(vector<Point> &candidateCorners, unsigned char *cornerImage, vector<Point> &intersections, int width, int height) {
+
+    unsigned char B;
+    unsigned char G;
+    unsigned char R;
+    Point point;
+    int mask = 5;
+    double time = Utilities::seconds();
+    for(int i = 0; i < intersections.size(); ++i){
+        point = intersections[i];
+        for(int y = point.y - mask / 2; y <= point.y + mask / 2; y++){
+            if (y >= 0 && y < height){
+                for(int x = point.x - mask / 2; x <= point.x + mask / 2; x++){
+                    if (x >= 0 && x < width){
+                        B = *(cornerImage + (y * width + x) * 3);
+                        G = *(cornerImage + (y * width + x) * 3 + 1);
+                        R = *(cornerImage + (y * width + x) * 3 + 2);
+                        if(B == 0 && G == 255 && R == 0){
+                            if(!(x < 5 && y < 5 || x >= width - 5 && y < 5 || x < 5 && y >= height - 5 || x >= width - 5 && y >= height - 5))
+                                candidateCorners.push_back(Point(x, y));
+                            *(cornerImage + (y * width + x) * 3) = 0;
+                            *(cornerImage + (y * width + x) * 3 + 1) = 0;
+                            *(cornerImage + (y * width + x) * 3 + 2) = 0;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return Utilities::seconds() - time;
+}
+
+void drawLines(Mat *image, Point a, Point b, Point c, Point d){
+    image->setTo(0);
+
+    line(*image, a, b, Scalar(0, 0, 255), 4);
+    line(*image, b, c, Scalar(0, 0, 255), 4);
+
+    line(*image, c, d, Scalar(0, 0, 255), 4);
+
+    line(*image, d, a, Scalar(0, 0, 255), 4);
+}
+
+double CpuAlgorithms::candidateGroups(vector<pair<vector<Point>, Mat*>> &groups, vector<Point> &corners, int width, int height,
+                                        float heightL, float heightH, float widthL, float widthH, float directionL, float directionH,
+                                        float parallel, float ratioL, float ratioH) {
+
+    float diagonal = sqrt(width * width + height * height);
+
+    vector<thread> threads;
+
+    double time = Utilities::seconds();
+    for (int i = 0; i < corners.size(); ++i) {
+        for (int y = 0; y < corners.size(); ++y) {
+            Point C1 = corners[i];
+            Point C2 = corners[y];
+            float SC1C2 = sqrt(pow(C1.x - C2.x, 2) + pow(C1.y - C2.y, 2)) / diagonal;
+            float DC1C2 = atan(abs((1.0 * C1.x - C2.x)) / abs(1.0 * C1.y - C2.y)) * (180 / (float) M_PI);
+
+            if(i != y && C1.x < C2.x && widthL < SC1C2 && SC1C2 < widthH && DC1C2 > directionH) {
+                for (int z = 0; z < corners.size(); ++z) {
+                    Point C3 = corners[z];
+                    float SC2C3 = sqrt(pow(C3.x - C2.x, 2) + pow(C3.y - C2.y, 2)) / diagonal;
+                    float DC2C3 = atan(abs((1.0 * C3.x - C2.x)) / abs(1.0 * C3.y - C2.y)) * (180 / (float) M_PI);
+
+                    if(y != z && C2.y < C3.y && C1.x < C3.x && C1.y < C3.y && heightL < SC2C3 && SC2C3 < heightH && DC2C3 < directionL) {
+                        for (int t = 0; t < corners.size(); ++t) {
+                            Point C4 = corners[t];
+
+                            float SC3C4 = sqrt(pow(C3.x - C4.x, 2) + pow(C3.y - C4.y, 2)) / diagonal;
+                            float DC3C4 = atan(abs((1.0 * C3.x - C4.x)) / abs(1.0 * C3.y - C4.y)) * (180 / (float) M_PI);
+
+                            float SC4C1 = sqrt(pow(C4.x - C1.x, 2) + pow(C4.y - C1.y, 2)) / diagonal;
+                            float DC4C1 = atan(abs((1.0 * C4.x - C1.x)) / abs(1.0 * C4.y - C1.y)) * (180 / (float) M_PI);
+
+                            if (z != t && C4.x < C3.x && C4.x < C2.x && C2.y < C4.y && C1.y < C4.y && widthL < SC3C4 && SC3C4 < widthH && DC3C4 > directionH &&
+                                heightL < SC4C1 && SC4C1 < heightH && DC4C1 < directionL &
+                                                                      abs(DC4C1 - DC2C3) < parallel && ratioL < (SC4C1 + SC2C3) / (SC3C4 + SC1C2) &&
+                                (SC4C1 + SC2C3) / (SC3C4 + SC1C2) < ratioH) {
+
+                                vector<Point> group;
+                                group.push_back(C1);
+                                group.push_back(C2);
+                                group.push_back(C3);
+                                group.push_back(C4);
+
+                                bool found = false;
+                                for (int j = 0; j < groups.size() && !found; ++j) {
+                                    vector<Point> oldGroup = groups[j].first;
+                                    Point p1 = group[0] - oldGroup[0];
+                                    Point p2 = group[1] - oldGroup[1];
+                                    Point p3 = group[2] - oldGroup[2];
+                                    Point p4 = group[3] - oldGroup[3];
+                                    if((abs(p1.x) < 5 && abs(p1.y) < 5 && abs(p2.x) < 5 && abs(p2.y) < 5 && abs(p3.x) < 5 &&
+                                            abs(p3.y) < 5 && abs(p4.x) < 5 && abs(p4.y) < 5))
+                                        found = true;
+                                }
+
+                                if(!found) {
+                                    Mat *poly = new Mat(height, width, CV_8UC3);
+                                    groups.push_back(pair<vector<Point>, Mat*>(group, poly));
+
+                                    threads.push_back(thread(drawLines, poly, C1, C2, C3, C4));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < threads.size(); ++i) {
+        threads[i].join();
+    }
+    return Utilities::seconds() - time;
+}
+
+double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pair<vector<Point>, Mat *>> &groups, unsigned char *image, int width, int height) {
+
+    float fillRatioLOne = 0.6;
+    float fillRatioHOne = 0.85;
+
+    float fillRatioLTwo = 0.87;
+    float fillRatioHTwo = 0.9;
+
+    vector<vector<Point>> matchFillRatioOne;
+    vector<vector<Point>> matchFillRatioTwo;
+
+    double time = Utilities::seconds();
+
+    for (int i = 0; i < groups.size(); ++i) {
+        vector<Point> group = groups[i].first;
+        Mat *poly = groups[i].second;
+
+        // L12
+        int x = group[0].x, y = group[0].y;
+        int len12 = 0, overlap12 = 0;
+        bool dir = false;
+        if (y < group[1].y)
+            dir = true;
+        while(x <= group[1].x) {
+            bool foundNext = false;
+            int maskX = 1, maskY = 1;
+            while (!foundNext && x + maskX < width) {
+                if (dir && x + maskX < width) {
+                    for (int j = -maskY; j <= maskY && !foundNext; ++j) {
+                        if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
+                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
+                                overlap12++;
+                            foundNext = true;
+                            x += maskX;
+                            y += j;
+                            len12++;
+                        }
+                    }
+                } else if (!dir && x + maskX < width) {
+                    for (int j = maskY; j >= -maskY && !foundNext; --j) {
+                        if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
+                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
+                                overlap12++;
+                            foundNext = true;
+                            x += maskX;
+                            y += j;
+                            len12++;
+                        }
+                    }
+                }
+                maskX++;
+                maskY++;
+            }
+        }
+
+        // L23
+        x = group[1].x, y = group[1].y;
+        int len23 = 0, overlap23 = 0;
+        dir = false;
+        if (x < group[2].x)
+            dir = true;
+        while (y <= group[2].y) {
+            bool foundNext = false;
+            int maskX = 1, maskY = 1;
+            while (!foundNext && y + maskY < height) {
+                if (dir && y + maskY < height) {
+                    for (int j = maskX; j >= -maskX && !foundNext; --j) {
+                        if (x + j >= 0 && x + j < width &&
+                        image[((y + maskY) * width + x + j) * 3] == 255) {
+                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
+                                overlap23++;
+                            foundNext = true;
+                            x += j;
+                            y += maskY;
+                            len23++;
+
+                        }
+                    }
+                } else if (!dir && y + maskY < height) {
+                    for (int j = -maskX; j <= maskX && !foundNext; ++j) {
+                        if (x + j >= 0 && x + j < width &&
+                        image[((y + maskY) * width + x + j) * 3] == 255) {
+                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
+                                overlap23++;
+                            foundNext = true;
+                            x += j;
+                            y += maskY;
+                            len23++;
+
+                        }
+                    }
+                }
+                maskX++;
+                maskY++;
+            }
+        }
+
+        // L34
+        x = group[3].x, y = group[3].y;
+        int len34 = 0, overlap34 = 0;
+        dir = false;
+        if (y < group[2].y)
+            dir = true;
+        while(x <= group[2].x) {
+            bool foundNext = false;
+            int maskX = 1, maskY = 1;
+            while (!foundNext && x + maskX < width) {
+                if (dir && x + maskX < width) {
+                    for (int j = -maskY; j <= maskY && !foundNext; ++j) {
+                        if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
+                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
+                                overlap34++;
+                            foundNext = true;
+                            x += maskX;
+                            y += j;
+                            len34++;
+                        }
+                    }
+                } else if (!dir && x + maskX < width) {
+                    for (int j = maskY; j >= -maskY && !foundNext; --j) {
+                        if (y + j >= 0 && y + j < height && image[((y + j) * width + x + maskX) * 3] == 255) {
+                            if (poly->data[((y + j) * width + x + maskX) * 3 + 2] == 255)
+                                overlap34++;
+                            foundNext = true;
+                            x += maskX;
+                            y += j;
+                            len34++;
+                        }
+                    }
+                }
+                maskX++;
+                maskY++;
+            }
+        }
+
+
+        // L41
+        x = group[0].x, y = group[0].y;
+        int len41 = 0, overlap41 = 0;
+        dir = false;
+        if (x < group[3].x)
+            dir = true;
+        while (y <= group[3].y) {
+            bool foundNext = false;
+            int maskX = 1, maskY = 1;
+            while (!foundNext && y + maskY < height) {
+                if (dir && y + maskY < height) {
+                    for (int j = maskX; j >= -maskX && !foundNext; --j) {
+                        if (x + j >= 0 && x + j < width &&
+                            image[((y + maskY) * width + x + j) * 3] == 255) {
+                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
+                                overlap41++;
+                            foundNext = true;
+                            x += j;
+                            y += maskY;
+                            len41++;
+                        }
+                    }
+                } else if (!dir && y + maskY < height) {
+                    for (int j = -maskX; j <= maskX && !foundNext; ++j) {
+                        if (x + j >= 0 && x + j < width &&
+                            image[((y + maskY) * width + x + j) * 3] == 255) {
+                            if (poly->data[((y + maskY) * width + x + j) * 3 + 2] == 255)
+                                overlap41++;
+                            foundNext = true;
+                            x += j;
+                            y += maskY;
+                            len41++;
+                        }
+                    }
+                }
+                maskX++;
+                maskY++;
+            }
+        }
+        
+        float fr12 = overlap12 * 1.0f / len12;
+        float fr23 = overlap23 * 1.0f / len23;
+        float fr34 = overlap34 * 1.0f / len34;
+        float fr41 = overlap41 * 1.0f / len41;
+
+        // First threshold
+        if(fr12 >= fillRatioLOne && fr23 >= fillRatioLOne && fr34 >= fillRatioLOne && fr41 >= fillRatioLOne &&
+           (fr12 + fr23 + fr34 + fr41 / 4) >= fillRatioHOne){
+
+            // Check if this match group is inside another
+            bool found = false;
+            for (int y = 0; y < matchFillRatioOne.size() && !found; ++y) {
+                vector<Point> checkGroup = matchFillRatioOne.at(y);
+                if(checkGroup[0].x <= group[0].x && checkGroup[0].y <= group[0].y &&
+                        checkGroup[1].x >= group[1].x && checkGroup[1].y <= group[1].y &&
+                        checkGroup[2].x >= group[2].x && checkGroup[2].y >= group[2].y &&
+                        checkGroup[3].x <= group[3].x && checkGroup[3].y >= group[3].y)
+                    found = true;
+            }
+            if(!found)
+                matchFillRatioOne.push_back(group);
+
+            // Second threshold
+            if(fr12 >= fillRatioLTwo && fr23 >= fillRatioLTwo && fr34 >= fillRatioLTwo && fr41 >= fillRatioLTwo &&
+            (fr12 + fr23 + fr34 + fr41 / 4) >= fillRatioHTwo){
+                
+                // Check if this match group is inside another
+                bool found = false;
+                for (int y = 0; y < matchFillRatioTwo.size() && !found; ++y) {
+                    vector<Point> checkGroup = matchFillRatioTwo.at(y);
+                    if(checkGroup[0].x <= group[0].x && checkGroup[0].y <= group[0].y &&
+                       checkGroup[1].x >= group[1].x && checkGroup[1].y <= group[1].y &&
+                       checkGroup[2].x >= group[2].x && checkGroup[2].y >= group[2].y &&
+                       checkGroup[3].x <= group[3].x && checkGroup[3].y >= group[3].y)
+                        found = true;
+                }
+                if(!found)
+                    matchFillRatioTwo.push_back(group);
+            }
+        }
+    }
+
+    if(matchFillRatioOne.size() <= 1)
+        matchFillRatio = matchFillRatioOne;
+    else if (matchFillRatioTwo.size() > 0)
+        matchFillRatio = matchFillRatioTwo;
+    else
+        matchFillRatio = matchFillRatioOne;
+
+    return Utilities::seconds() - time;
+}
+
+void drawRectVerticalLine(unsigned char *image, int width, int height, const Point &p1, const Point &p2,
+                  Scalar scalar, unsigned char thickness){
+    for (int x = p1.y - thickness; x < p2.y + thickness; ++x) {
+        if (x >= 0 && x < height){
+            for (int z = -thickness; z <= thickness; ++z) {
+                if(p1.x + z >= 0 && p1.x + z < width){
+                    image[(x * width + p1.x + z) * 3] = scalar.val[0];
+                    image[(x * width + p1.x + z) * 3 + 1] = scalar.val[1];
+                    image[(x * width + p1.x + z) * 3 + 2] = scalar.val[2];
+                }
+            }
+        }
+    }
+}
+
+void drawRectHorizontalLine(unsigned char *image, int width, int height, const Point &p1, const Point &p2,
+                          Scalar scalar, unsigned char thickness){
+    for (int x = p1.x - thickness; x < p2.x + thickness; ++x) {
+        if(x >= 0 && x < width){
+            for (int z = -thickness; z <= thickness; ++z) {
+                if(p1.y + z >= 0 && p1.y + z < height){
+                    image[((p1.y + z) * width + x) * 3] = scalar.val[0];
+                    image[((p1.y + z) * width + x) * 3 + 1] = scalar.val[1];
+                    image[((p1.y + z) * width + x) * 3 + 2] = scalar.val[2];
+                }
+            }
+        }
+    }
+}
+
+void CpuAlgorithms::drawRectangle(const unsigned char *image, int width, int height, const Point &p1, const Point &p2, const Point &p3, const Point &p4,
+                                 Scalar scalar, unsigned char thickness) {
+
+    thickness /= 2;
+
+    Point A;
+    Point B;
+    Point C;
+    Point D;
+
+    if(p1.y <= p2.y){
+        A.y = p1.y;
+        B.y = p1.y;
+    } else {
+        A.y = p2.y;
+        B.y = p2.y;
+    }
+
+    if(p1.x <= p4.x){
+        A.x = p1.x;
+        D.x = p1.x;
+    } else {
+        A.x = p4.x;
+        D.x = p4.x;
+    }
+
+    if(p2.x > p3.x){
+        B.x = p2.x;
+        C.x = p2.x;
+    } else{
+        B.x = p3.x;
+        C.x = p3.x;
+    }
+
+    if(p3.y > p4.y){
+        C.y = p3.y;
+        D.y = p3.y;
+    } else{
+        C.y = p4.y;
+        D.y = p4.y;
+    }
+
+    thread threads[4];
+
+    threads[0] = thread(drawRectHorizontalLine, (unsigned char*) image, width, height, A, B, scalar, thickness);
+
+    threads[1] = thread(drawRectVerticalLine, (unsigned char*) image, width, height, B, C, scalar, thickness);
+
+    threads[2] = thread(drawRectHorizontalLine, (unsigned char*) image, width, height, D, C, scalar, thickness);
+
+    threads[3] = thread(drawRectVerticalLine, (unsigned char*) image, width, height, A, D, scalar, thickness);
+
+    threads[0].join();
+    threads[1].join();
+    threads[2].join();
+    threads[3].join();
+
 }
