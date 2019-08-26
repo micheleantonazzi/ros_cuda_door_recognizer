@@ -462,7 +462,7 @@ double CpuAlgorithms::candidateGroups(vector<pair<vector<Point>, Mat*>> &groups,
 
                             float SC4C1 = sqrt(pow(C4.x - C1.x, 2) + pow(C4.y - C1.y, 2)) / diagonal;
                             float DC4C1 = atan(abs((1.0 * C4.x - C1.x)) / abs(1.0 * C4.y - C1.y)) * (180 / (float) M_PI);
-                            //printf("%f, %f\n", SC4C1, DC4C1);
+
                             if (z != t && C4.x < C3.x && C4.x < C2.x && C2.y < C4.y && C1.y < C4.y && widthL < SC3C4 && SC3C4 < widthH && DC3C4 > directionH &&
                                 heightL < SC4C1 && SC4C1 < heightH && DC4C1 < directionL &
                                                                       abs(DC4C1 - DC2C3) < parallel && ratioL < (SC4C1 + SC2C3) / (SC3C4 + SC1C2) &&
@@ -489,22 +489,8 @@ double CpuAlgorithms::candidateGroups(vector<pair<vector<Point>, Mat*>> &groups,
                                 if(!found) {
                                     Mat *poly = new Mat(height, width, CV_8UC3);
                                     groups.push_back(pair<vector<Point>, Mat*>(group, poly));
-                                    //printf("C1: %i, %i, C2: %i, %i, C3: %i, %i, C4: %i, %i\n", C1.x, C1.y, C2.x, C2.y, C3.x, C3.y,
-                                      //     C4.x, C4.y);
+
                                     threads.push_back(thread(drawLines, poly, C1, C2, C3, C4));
-                                    /*Mat im(height, width, CV_8UC3);
-                                    for (int j = 0; j < width * height * 3; ++j) {
-                                        im.data[j] = image.data[j];
-                                    }
-                                    line(im, C1, C2, Scalar(0, 0, 255), 4);
-                                    line(im, C2, C3, Scalar(0, 0, 255), 4);
-
-                                    line(im, C3, C4, Scalar(0, 0, 255), 4);
-
-                                    line(im, C4, C1, Scalar(0, 0, 255), 4);
-                                    imshow("ciao", im);
-                                    waitKey(0);
-                                    */
                                 }
                             }
                         }
@@ -516,8 +502,6 @@ double CpuAlgorithms::candidateGroups(vector<pair<vector<Point>, Mat*>> &groups,
 
     for (int i = 0; i < threads.size(); ++i) {
         threads[i].join();
-        //imshow("ciao", *(groups[i].second));
-        //waitKey(0);
     }
     return Utilities::seconds() - time;
 }
@@ -538,8 +522,6 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
     for (int i = 0; i < groups.size(); ++i) {
         vector<Point> group = groups[i].first;
         Mat *poly = groups[i].second;
-        //imshow("ciao", *poly);
-        //waitKey(0);
 
         // L12
         int x = group[0].x, y = group[0].y;
@@ -699,9 +681,7 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                 maskY++;
             }
         }
-
-        //printf("%i %i %i %i %i %i %i %i\n", len12, overlap12, len23, overlap23, len34, overlap34, len41, overlap41);
-
+        
         float fr12 = overlap12 * 1.0f / len12;
         float fr23 = overlap23 * 1.0f / len23;
         float fr34 = overlap34 * 1.0f / len34;
@@ -727,6 +707,7 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
             // Second threshold
             if(fr12 >= fillRatioLTwo && fr23 >= fillRatioLTwo && fr34 >= fillRatioLTwo && fr41 >= fillRatioLTwo &&
             (fr12 + fr23 + fr34 + fr41 / 4) >= fillRatioHTwo){
+                
                 // Check if this match group is inside another
                 bool found = false;
                 for (int y = 0; y < matchFillRatioTwo.size() && !found; ++y) {
@@ -740,7 +721,6 @@ double CpuAlgorithms::fillRatio(vector<vector<Point>>& matchFillRatio, vector<pa
                 if(!found)
                     matchFillRatioTwo.push_back(group);
             }
-            //printf("trovato!\n");
         }
     }
 
