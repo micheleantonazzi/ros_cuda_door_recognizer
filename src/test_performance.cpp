@@ -96,19 +96,6 @@ int main(int argc, char **argv){
 
         imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner.jpg", corner);
 
-        // Find corners
-        /*
-        vector<Point> corners;
-        CpuAlgorithms::getInstance().findCorner(corner.data, corners, image->getWidth(), image->getHeight());
-        printf("cap %i\n", corners.size());
-        vector<int> groups;
-        time = CpuAlgorithms::getInstance().candidateGroups(corners, groups, corner, image->getWidth(), image->getHeight());
-        printf("gruppi: %i\n", groups.size());
-        printf("Tempo gruppi %f\n", time);
-
-        imwrite(Parameters::getInstance().getProcessedImagesPath() + "cpu-corner-lines.jpg", corner);
-         */
-
         // Find intersections between hough lines in order to reduce the number of corners
         vector<Point> intersectionPoints;
         Mat sobelGray(image->getHeight(), image->getWidth(), CV_8UC1);
