@@ -9,7 +9,7 @@ This package offers three different ros node:
 * **door_recognizer:** this node analyzes as quickly as possible frames coming from the camera in order to find a door. It runs in CPU 
 * **door_recognizer_gpu:** this node analyzes frames coming from the camera to find a door. It runs in GPU and the performance should be better than the CPU version
 
-The goal of the last two nodes (that analyze as quickly as possible frames captured by the camera) is to hide the eventually low precision of the algorithm and its possible errors. In this way the robot can analyzes a lot of different images per second, taken in different positions and angles in order to have a lot of results to hide sporadic errors.
+The goal of the last two nodes (that analyze as quickly as possible frames captured by the camera) is to hide the eventually low precision of the algorithm and its possible errors. In this way the robot can analyze a lot of different images per second, taken in different positions and angles in order to have a lot of results to hide sporadic errors.
 
 ## Algorithmic approach
 
@@ -71,7 +71,7 @@ In order to detect a door, the program uses techniques of image processing. In t
   
     Now, the pixel with a R value very high are corners 
   
-  Finally are applied a particular algorithm in order to find a door starting from the filtered image. A door is found following a specific geometric model. This model consists of two horizontal lines and two vertical lines between four corners. This is the ideal geometric model but some corners of a door could be occluded. In this case one of the horizontal lines could be outside of the image and the previous model is wrong. In order to consider also the occluded door the geometric model is generalized by the four following assumptions:
+  Finally a particular algorithm is applied to the filtered image: it's gaol is to find a door. A door is found following a specific geometric model. This model consists of two horizontal lines and two vertical lines between four corners. This is the ideal geometric model but some corners of a door could be occluded. In this case one of the horizontal lines could be outside of the image and the previous model is wrong. In order to consider also the occluded door the geometric model is generalized by the four following assumptions:
   
   1. at least two corners are visible in the image
   2. all vertical lines are included in the image
@@ -84,22 +84,22 @@ In order to detect a door, the program uses techniques of image processing. In t
   
   The second door is occluded, in particular corners C and D are outside the image, as the line L34. In order to recognize also the occluded door, the image's borders are considered edges by the Canny filter and the intersection between an image border and a door vertical lines is considered a corner by Harris Corner Detector. The algorithm steps to recognize a door using this geometric model are the following:
   
-  * **find candidate corners:** to found a door it is necessary to find all four-corner groups. In practice the number of this group is too large, so found and control all groups is impossible. Ideally, only corners near a long edge could be a real door corner. In order to reduce the number of corners applying this idea, the Hough Line Transform is used. Applied to an image manipulated with Canny filter, it is able to detect straight lines. After that, every intersection between two Hough lines are found: near these points could be candidate corners to found a door. Each corner too far to the intersection between two Hough lines are suppressed
+  * **find candidate corners:** to find a door it is necessary to find all four-corner groups. In practice the number of this group is too large, so found and control all groups is impossible. Ideally, only corners near a long edge could be a real door corner. The Hough Line Transform is perfect for this purpose. Applied to an image manipulated with Canny filter, it is able to detect straight lines. After that, every intersection between two Hough lines are found: near these points could be candidate corners to find a door. Each corner too far to the intersection between two Hough lines are suppressed
   
-  * **find the candidate groups:** now is the moment to find all four-corner groups and filter them in order to preserve those that respect the geometric model. A door model is composed by four corners C<sub>1</sub>, C<sub>2</sub>, C<sub>3</sub>, C<sub>4</sub> and four lines L<sub>12</sub>, L<sub>23</sub>, L<sub>34</sub>, L<sub>41</sub>. Every corner C<sub>i</sub> has the coordinate (x<sub>i</sub>, y<sub>i</sub>) and every line has a certain length. Is important to specify that the origin of the axes is the top-left corner of the image and all coordinates are positive. According with the geometric model, in particular with its third and fourth assumption, the directions and lengths of this four lines can be used to get the four-corner groups that could be a real door. To doing this, two new variables are necessary:
+  * **find the candidate groups:** now is the moment to find all four-corner groups and filter them in order to preserve those that respect the geometric model. A door model is composed by four corners C<sub>1</sub>, C<sub>2</sub>, C<sub>3</sub>, C<sub>4</sub> and four lines L<sub>12</sub>, L<sub>23</sub>, L<sub>34</sub>, L<sub>41</sub>. Every corner C<sub>i</sub> has the coordinate (x<sub>i</sub>, y<sub>i</sub>) and every line has a certain length. It's important to specify that the origin of the axes is the top-left corner of the image and all coordinates are positive. According to the geometric model, in particular with its third and fourth assumption, the directions and lengths of this four lines can be used to get the four-corner groups that could be a real door. To do this, two new variables are necessary:
   
     * **S<sub>ij</sub>:** the ratio between the length of L<sub>ij</sub> and the diagonal of the relative image. S<sub>ij</sub> is defined by the following equation: ![](images/md/Sij.png) where DI is the image's diagonal length
     * **D<sub>ij</sub>:** the direction of L<sub>ij</sub> corresponding to the horizontal axis of the relative image. D<sub>ij</sub> is defined by the following equation: ![](images/md/Dij.png)
   
     Using this new variables, each four-corner groups is kept as a candidate group if it meets all of the following geometric requirements:
   
-    * according with the fouth assumption of the geometric model, each line has a certain with and height. So, S<sub>ij</sub> should be in a certain range: 
+    * according with the fourth assumption of the geometric model, each line has a certain with and height. So, S<sub>ij</sub> should be in a certain range: 
   
       *heightL* < L<sub>23</sub>, L<sub>41</sub> < *heightH*
   
       *widthL* < L<sub>12</sub>, L<sub>34</sub> < *widthH*
   
-    * L<sub>12</sub> and L<sub>34</sub> shuold be perpendicular with the vertical axis or, due to perspective deformation, could form a certain angle minor than 90 degrees with the vertical axis. But this angle should near 90 degrees, so: 
+    * L<sub>12</sub> and L<sub>34</sub> should be perpendicular with the vertical axis or, due to perspective deformation, could form a certain angle minor than 90 degrees with the vertical axis. But this angle should be near 90 degrees, so: 
   
       D<sub>12</sub>, D<sub>34</sub> > *directionH*
   
@@ -117,7 +117,7 @@ In order to detect a door, the program uses techniques of image processing. In t
   
     These variables are set by default in the launch files. After that, the groups, that have most of the area overlapped with other, aren't considered
   
-* **combine corners and edges:** with the previous step all the candidate groups that respect the geometric model are collected. Now is necessary to verify if there are four edges that connect the four corner. To doing this, the concept of *fill-ratio* must be defined. The four lines are impressed in the image with a mask that has a thickness of 6 pixel. After that the overlap of these imaginary lines and the correspond edge found with Canny is measured. The *fill-ratio* is calculated with the following equation: ![Fill-ratio](images/md/fill-ratio.png) 
+* **combine corners and edges:** with the previous step all the candidate groups that respect the geometric model are collected. Now is necessary to verify if there are four edges that connect the four corner. To do this, the concept of *fill-ratio* must be defined. The four lines are impressed in the image with a mask that has a thickness of 6 pixel. After that the overlap of these imaginary lines and the correspond edge found with Canny is measured. The *fill-ratio* is calculated with the following equation: ![Fill-ratio](images/md/fill-ratio.png) 
 
   The four *fill-ratio* (one for each line of a door) must be larger than a threshold *ratioL* and the average of them must be larger than another threshold *ratioH*. After that, if there are more than one group, this control is repeated with two higher threshold
 
@@ -128,8 +128,8 @@ In this section the algorithms implemented in CPU and GPU are compared in order 
 * **branch efficiency:** it measures the percentage of branches that follow the main execution path. If its value is 100% the max efficiency is achieved, that means all branches follow the same execution path
 * **achieved occupancy:** this metrics is about the number of active warp. Its range of values is between 0 and 1, where 1 represent the maximum and the high efficiency
 *   **global memory load efficiency:** it measures the efficiency with which the kernel read data from global memory. In GPU with memory access it is possible to read 128 byte, in this way if all 32 threads in a warp require a float (4 byte), the data will be given to all threads with a single transaction. But there is some conditions for having this property: the 128 bytes must be consecutive and aligned, so the first address of the transaction must be a multiple of 128. If the threads request for data in arbitrary positions, many transaction are made (each one read 128 byte) but many read values are discarded because they are not requested by the threads. This metric is the percentage of the byte read from the memory and the byte used by the threads, so if the value is 100% the maximum efficiency is achieved
-*   **global memory load efficiency:** the principle with which data is store in global memory is the same as written above. So if the value is 100% the pattern is respected and the efficiency is maximum
-*   **shared memory efficiency:** this metric measures the efficiency who with threads read and write the shared memory. It's expressed in precentage
+*   **global memory load efficiency:** the principle used to store in global memory is the same as written above. So if the value is 100% the pattern is respected and the efficiency is maximum
+*   **shared memory efficiency:** this metric measures the efficiency of access to shared memory. It's expressed in percentage
 
 All the test are executed in a laptop with:
 
